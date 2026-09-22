@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tadarak — Smart Qadha Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #020617; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+  <!-- Top Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl">
+          ت
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">Tadarak <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium ml-1">Hanafi Edition</span></h1>
+          <p class="text-xs text-slate-400">Tadarak.com — Smart Qadha Prayer Tracker</p>
+        </div>
+      </div>
+      <div className="flex items-center space-x-2 bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/50">
+        <span class="text-xs font-semibold text-amber-400 flex items-center px-2">
+          🔥 2 Day Streak
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="max-w-5xl mx-auto px-4 mt-6">
+    <div class="flex border-b border-slate-800 space-x-8">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pb-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400">
+        Dashboard & Analytics
+      </button>
+      <button onclick="switchTab('tracker')" id="tab-tracker" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+        Daily Qadha Log
+      </button>
+      <button onclick="switchTab('about')" id="tab-about" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+        About the CEO
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab 1: Dashboard -->
+  <main id="view-dashboard" class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+      <h2 class="text-base font-semibold text-slate-200 mb-4">Account & Baligh Setup (Age 12 Calculator)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Date of Birth</label>
+          <input type="date" id="dob" value="2009-11-21" onchange="recalculate()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Qadha Start Date</label>
+          <input type="date" id="qadhaStart" value="2026-09-20" onchange="recalculate()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Fiqh Compliance</label>
+          <div class="flex items-center h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-emerald-400 font-medium">
+            🛡️ Hanafi (5 Farz + 3 Witr Daily)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <p class="text-xs text-slate-400">Total Target Prayers</p>
+        <p id="stat-target" class="text-2xl font-bold text-slate-100 mt-1">0</p>
+        <p id="stat-days" class="text-[10px] text-slate-500 mt-1">0 days × 6 prayers</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <p class="text-xs text-slate-400">Completed Prayers</p>
+        <p id="stat-completed" class="text-2xl font-bold text-emerald-400 mt-1">12</p>
+        <p class="text-[10px] text-emerald-500/80 mt-1">Logged in tracker</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <p class="text-xs text-slate-400">Remaining Balance</p>
+        <p id="stat-remaining" class="text-2xl font-bold text-amber-400 mt-1">0</p>
+        <p class="text-[10px] text-amber-500/80 mt-1">Pending Qadha</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <p class="text-xs text-slate-400">Completion Pace</p>
+        <p class="text-2xl font-bold text-blue-400 mt-1">6.0 <span class="text-xs text-slate-400 font-normal">/ day</span></p>
+        <p class="text-[10px] text-blue-500/80 mt-1">Average daily rate</p>
+      </div>
+    </div>
+
+    <!-- Projection Banner -->
+    <div class="bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-2xl p-6">
+      <h3 class="text-sm font-semibold text-emerald-400">Adaptive Completion Projection</h3>
+      <p class="text-lg font-bold text-slate-100 mt-0.5">
+        Projected Finish Date: <span id="stat-projection" class="text-emerald-300">--</span>
+      </p>
+      <p id="stat-baligh" class="text-xs text-slate-400 mt-1">Calculated based on Baligh age 12.</p>
+    </div>
+  </main>
+
+  <!-- Tab 2: Tracker -->
+  <main id="view-tracker" class="max-w-5xl mx-auto px-4 mt-6 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-base font-semibold text-slate-100">Daily Qadha Log (Hanafi Framework)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Tap checkmarks as you offer Qadha prayers alongside daily Namaz.</p>
+        </div>
+        <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">6 Prayers / Day</span>
+      </div>
+
+      <div class="space-y-3">
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span class="text-xs font-semibold text-slate-300">2026-09-20</span>
+          <div class="grid grid-cols-6 gap-2 w-full max-w-xl">
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Fajr (2)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Dhuhr (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Asr (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Maghrib (3)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Isha (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Witr (3)</button>
+          </div>
+        </div>
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span class="text-xs font-semibold text-slate-300">2026-09-21</span>
+          <div class="grid grid-cols-6 gap-2 w-full max-w-xl">
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Fajr (2)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Dhuhr (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Asr (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Maghrib (3)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Isha (4)</button>
+            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Witr (3)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Tab 3: About CEO -->
+  <main id="view-about" class="max-w-3xl mx-auto px-4 mt-6 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+      <div class="w-24 h-24 mx-auto rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center text-slate-200 font-bold text-2xl mb-4">
+        ZQ
+      </div>
+      <h2 class="text-2xl font-bold text-white">Zohaib Qaiser</h2>
+      <p class="text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1">Founder & CEO — Tadarak.com</p>
+      <blockquote class="mt-6 text-slate-300 italic text-sm leading-relaxed bg-slate-950/60 p-6 rounded-2xl border border-slate-800">
+        &ldquo;All men dream: but not equally. Those who dream by night in the dusty recesses of their minds wake in the day to find that it was vanity: but the dreamers of the day are dangerous men, for they may act their dreams with open eyes, to make it possible. This I did&rdquo;
+      </blockquote>
+    </div>
+  </main>
+
+  <script>
+    function switchTab(tab) {
+      document.getElementById('view-dashboard').classList.add('hidden');
+      document.getElementById('view-tracker').classList.add('hidden');
+      document.getElementById('view-about').classList.add('hidden');
+
+      document.getElementById('tab-dashboard').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
+      document.getElementById('tab-tracker').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
+      document.getElementById('tab-about').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
+
+      document.getElementById('view-' + tab).classList.remove('hidden');
+      document.getElementById('tab-' + tab).className = "pb-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400";
+    }
+
+    function recalculate() {
+      const dobVal = new Date(document.getElementById('dob').value);
+      const startVal = new Date(document.getElementById('qadhaStart').value);
+      
+      const baligh = new Date(dobVal.getFullYear() + 12, dobVal.getMonth(), dobVal.getDate());
+      const diffTime = Math.max(0, startVal - baligh);
+      const missedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const targetPrayers = missedDays * 6;
+      const completed = 12;
+      const remaining = Math.max(0, targetPrayers - completed);
+
+      document.getElementById('stat-target').innerText = targetPrayers.toLocaleString();
+      document.getElementById('stat-days').innerText = missedDays.toLocaleString() + " days × 6 prayers";
+      document.getElementById('stat-remaining').innerText = remaining.toLocaleString();
+      document.getElementById('stat-baligh').innerText = "Calculated based on Baligh date (Age 12): " + baligh.toISOString().split('T')[0];
+
+      const estDays = Math.ceil(remaining / 6);
+      const projDate = new Date();
+      projDate.setDate(projDate.getDate() + estDays);
+      document.getElementById('stat-projection').innerText = projDate.toISOString().split('T')[0];
+    }
+
+    recalculate();
+  </script>
+</body>
+</html>
