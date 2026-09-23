@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tadarak | Qadha Prayer Tracker & Leaderboard</title>
+  <title>Tadarak | Qadha Prayer Tracker</title>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,9 +14,9 @@
 
   <style>
     .glass-card {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     body {
       background-color: #0b0f19;
@@ -27,25 +27,31 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between">
 
-  <!-- NAVIGATION BAR -->
-  <nav class="border-b border-gray-800 bg-gray-900/50 backdrop-blur sticky top-0 z-50">
+  <!-- NAVBAR WITH CUSTOM OTTOMAN SHIP STENCIL LOGO -->
+  <nav class="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <div class="bg-emerald-500 text-black p-2 rounded-lg font-bold text-xl"><i class="fa-solid fa-kaaba"></i></div>
-        <span class="text-xl font-bold tracking-wide text-white">TADARAK</span>
+        <!-- Ottoman Ship SVG Stencil Logo -->
+        <div class="p-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400">
+          <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24">
+            <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
+          </svg>
+        </div>
+        <span class="text-xl font-bold tracking-widest text-white">TADARAK</span>
       </div>
+
       <div id="auth-section" class="flex items-center space-x-3">
         <button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">
-          Sign In / Sign Up
+          Sign In / Create Account
         </button>
       </div>
     </div>
   </nav>
 
-  <!-- MAIN CONTAINER -->
+  <!-- MAIN APP CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-grow">
 
-    <!-- USER STATS BAR (XP, STREAK, FREEZES) -->
+    <!-- USER STATS BAR -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
         <i class="fa-solid fa-bolt text-yellow-400 text-2xl"></i>
@@ -80,159 +86,184 @@
     <!-- TABS NAVIGATION -->
     <div class="flex border-b border-gray-800 space-x-8 mb-6 text-sm font-medium">
       <button onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Daily Qadha Log</button>
-      <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame (Leaderboard)</button>
+      <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame</button>
       <button onclick="switchTab('report')" id="tab-report" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Progress & Certificate</button>
-      <button onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About & FAQs</button>
+      <button onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About CEO & FAQs</button>
     </div>
 
     <!-- TAB 1: DYNAMIC DAILY QADHA LOG -->
     <section id="content-daily" class="space-y-6">
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Daily Qadha Tracker</h2>
-        <span class="text-xs text-gray-400">Newest date appears on top (+10 XP per prayer)</span>
+        <span class="text-xs text-gray-400">Newest date on top (+10 XP per prayer)</span>
       </div>
-
-      <!-- DYNAMIC LOG CONTAINER -->
-      <div id="qadha-log-container" class="space-y-4">
-        <!-- Log entries dynamically rendered via JavaScript -->
-      </div>
+      <div id="qadha-log-container" class="space-y-4"></div>
     </section>
 
-    <!-- TAB 2: HALL OF FAME (DUOLINGO-STYLE LEADERBOARD) -->
+    <!-- TAB 2: HALL OF FAME LEADERBOARD -->
     <section id="content-leaderboard" class="hidden space-y-6">
       <div class="flex justify-between items-center">
-        <h2 class="text-xl font-bold">Weekly Leaderboard (Hall of Fame)</h2>
-        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Updates live</span>
+        <h2 class="text-xl font-bold">Weekly Hall of Fame</h2>
+        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Live Rankings</span>
       </div>
-      
       <div class="glass-card rounded-xl overflow-hidden">
         <table class="w-full text-left text-sm">
           <thead class="bg-gray-800/60 text-gray-400 border-b border-gray-700">
             <tr>
               <th class="p-4">Rank</th>
-              <th class="p-4">User</th>
+              <th class="p-4">Member</th>
               <th class="p-4">Weekly XP</th>
               <th class="p-4">Streak</th>
             </tr>
           </thead>
-          <tbody id="leaderboard-body" class="divide-y divide-gray-800">
-            <!-- Dynamic Leaderboard Data -->
-          </tbody>
+          <tbody id="leaderboard-body" class="divide-y divide-gray-800"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- TAB 3: PROGRESS & CERTIFICATE GENERATOR -->
+    <!-- TAB 3: PROGRESS & CERTIFICATE -->
     <section id="content-report" class="hidden space-y-6">
       <div class="glass-card p-6 rounded-xl max-w-2xl mx-auto space-y-4">
         <h2 class="text-xl font-bold text-center text-emerald-400">Generate Official Progress Report</h2>
-        <p class="text-xs text-gray-400 text-center">Export an official PDF report certified by the Founder & CEO.</p>
-        
+        <p class="text-xs text-gray-400 text-center">Download a certified PDF report signed by the CEO.</p>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Custom Report Date</label>
+          <label class="block text-xs text-gray-400 mb-1">Report Issue Date</label>
           <input type="date" id="cert-date" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
         </div>
-
-        <div>
-          <label class="block text-xs text-gray-400 mb-1">User Full Name</label>
-          <input type="text" id="cert-name" placeholder="Enter full legal name" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
-        </div>
-
         <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg transition text-sm">
-          <i class="fa-solid fa-file-pdf mr-2"></i>Download Certified PDF Report
+          <i class="fa-solid fa-file-pdf mr-2"></i>Download Certified PDF
         </button>
       </div>
     </section>
 
-    <!-- TAB 4: ABOUT, FOUNDER & FAQ SECTION -->
+    <!-- TAB 4: ABOUT CEO, WHY TADARAK, FAQs & ASK CEO -->
     <section id="content-about" class="hidden space-y-8">
       <div class="grid md:grid-cols-3 gap-6">
-        <!-- Founder Profile Card -->
+        
+        <!-- CEO PROFILE CARD WITH OTTOMAN SHIP LOGO -->
         <div class="glass-card p-6 rounded-xl text-center space-y-4">
-          <div class="w-32 h-32 mx-auto rounded-full bg-gray-800 border-2 border-emerald-500 flex items-center justify-center overflow-hidden">
-            <img id="founder-img" src="https://via.placeholder.com/150?text=Your+Photo+Here" alt="CEO & Founder" class="w-full h-full object-cover">
+          <div class="w-32 h-32 mx-auto rounded-full bg-emerald-500/10 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 p-4">
+            <!-- Ottoman Ship Stencil -->
+            <svg class="w-full h-full fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
+            </svg>
           </div>
           <div>
             <h3 class="text-lg font-bold text-white">Zohaib Qaiser</h3>
             <p class="text-xs text-emerald-400 font-semibold">Founder & CEO, Tadarak</p>
           </div>
-          <p class="text-xs text-gray-400">
-            Dedicated to building structured, intelligent software solutions that empower Muslims worldwide to recover missed obligations seamlessly.
-          </p>
+          <blockquote class="text-xs italic text-gray-300 border-l-2 border-emerald-500 pl-3 text-left">
+            "Every unoffered prayer is a debt waiting to be fulfilled. Tadarak was created to turn overwhelming obligations into structured, achievable daily progress."
+          </blockquote>
         </div>
 
-        <!-- Story & Vision -->
+        <!-- STORY SECTION -->
         <div class="md:col-span-2 glass-card p-6 rounded-xl space-y-4">
           <h2 class="text-xl font-bold text-emerald-400">Why Tadarak Was Made</h2>
           <p class="text-sm text-gray-300 leading-relaxed">
-            Tadarak (تدارك) stems from the Arabic imperative to rectifying, catching up, or making amends before time elapses. Many believers face uncertainties regarding exact counts of unperformed prayers across years. 
+            Tadarak (تدارك) embodies the imperative to catch up, rectify, and fulfill duties before time elapses. Many believers face uncertainties regarding years of missed prayers.
           </p>
           <p class="text-sm text-gray-300 leading-relaxed">
-            Tadarak was engineered as an all-in-one digital ecosystem combining Hanafi-compliant calculation engines, daily micro-logging, and social accountability mechanics to turn daunting Qadha goals into disciplined, achievable daily habits.
+            Tadarak serves as a structured digital ecosystem combining Hanafi-compliant calculation engines, daily micro-logging, and accountability systems to help users methodically fulfill their obligations.
           </p>
         </div>
       </div>
 
-      <!-- FAQs -->
-      <div class="glass-card p-6 rounded-xl space-y-4">
-        <h3 class="text-lg font-bold text-white">Frequently Asked Questions</h3>
-        <div class="space-y-3 text-sm">
-          <details class="bg-gray-800/50 p-3 rounded-lg">
-            <summary class="font-semibold cursor-pointer text-emerald-400">How are missed prayers calculated?</summary>
-            <p class="mt-2 text-gray-300 text-xs">Calculations start from the age of puberty (defaulted to 12 years) up to your current age, adjusting for daily logged fulfillments.</p>
-          </details>
-          <details class="bg-gray-800/50 p-3 rounded-lg">
-            <summary class="font-semibold cursor-pointer text-emerald-400">How do Streak Freezes work?</summary>
-            <p class="mt-2 text-gray-300 text-xs">If you miss logging for a single day, a Streak Freeze is automatically consumed from your profile balance to protect your consecutive streak count.</p>
-          </details>
+      <!-- FAQ & SUBMIT QUESTION DIRECTLY TO CEO -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="glass-card p-6 rounded-xl space-y-4">
+          <h3 class="text-lg font-bold text-white">Frequently Asked Questions</h3>
+          <div class="space-y-3 text-sm">
+            <details class="bg-gray-800/50 p-3 rounded-lg">
+              <summary class="font-semibold cursor-pointer text-emerald-400">How are missed prayers calculated?</summary>
+              <p class="mt-2 text-gray-300 text-xs">Calculations start from puberty (age 12) to your current age based on your submitted Date of Birth.</p>
+            </details>
+            <details class="bg-gray-800/50 p-3 rounded-lg">
+              <summary class="font-semibold cursor-pointer text-emerald-400">How do Streak Freezes work?</summary>
+              <p class="mt-2 text-gray-300 text-xs">If you miss logging for a day, a Streak Freeze is used automatically from your balance to protect your consecutive streak.</p>
+            </details>
+          </div>
+        </div>
+
+        <!-- SUBMIT QUESTION TO CEO FORM (Auto-sends to czarzohaib@gmail.com) -->
+        <div class="glass-card p-6 rounded-xl space-y-4">
+          <h3 class="text-lg font-bold text-white">Ask the CEO Direct</h3>
+          <p class="text-xs text-gray-400">Have a question or suggestion? Submit below to send a direct message to CEO Zohaib Qaiser.</p>
+          <form action="https://formspree.io/f/czarzohaib@gmail.com" method="POST" class="space-y-3">
+            <input type="text" name="user_name" id="q-name" placeholder="Your Name" required class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+            <input type="email" name="user_email" id="q-email" placeholder="Your Email" required class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+            <textarea name="message" rows="3" placeholder="Write your question here..." required class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm"></textarea>
+            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg text-sm transition">
+              Send Directly to CEO
+            </button>
+          </form>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- AUTH MODAL -->
+  <!-- SIGN IN & PROFILE CREATION MODAL -->
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
-    <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-sm w-full space-y-4">
-      <h3 class="text-xl font-bold text-white text-center">Sign In / Register</h3>
-      <input type="email" id="auth-email" placeholder="Email address" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
-      <input type="password" id="auth-pass" placeholder="Password" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
-      <button onclick="handleAuth()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg transition text-sm">Continue</button>
+    <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
+      <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
+      <p class="text-xs text-gray-400 text-center">Profile details will be sent to admin (czarzohaib@gmail.com)</p>
+      
+      <form id="profile-form" action="https://formspree.io/f/czarzohaib@gmail.com" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
+        <input type="text" name="fullName" id="auth-name" placeholder="Full Name" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+        <input type="email" name="email" id="auth-email" placeholder="Email Address" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Date of Birth (For Qadha Engine)</label>
+          <input type="date" name="dob" id="auth-dob" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
+          Save Profile & Start
+        </button>
+      </form>
       <button onclick="closeAuthModal()" class="w-full text-xs text-gray-400 hover:text-white">Cancel</button>
     </div>
   </div>
 
-  <!-- APP LOGIC SCRIPT -->
+  <!-- APP SCRIPT ENGINE -->
   <script>
-    // State management using LocalStorage backup
-    let currentUser = JSON.parse(localStorage.getItem('tadarak_user')) || {
-      email: 'Guest',
-      xp: 120,
-      streak: 3,
-      freezes: 2,
-      name: 'User'
-    };
-
     const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
     
-    // Sample Daily Data (Newest First)
+    // Load session persistence
+    let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
+    let allUsers = JSON.parse(localStorage.getItem('tadarak_global_users')) || [
+      { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14 }
+    ];
+
+    let todayStr = new Date().toISOString().split('T')[0];
     let dailyLogs = JSON.parse(localStorage.getItem('tadarak_logs')) || [
-      { date: '2026-09-23', logged: { Fajr: true, Dhuhr: true, Asr: false, Maghrib: false, Isha: false, Witr: false } },
-      { date: '2026-09-22', logged: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, Witr: true } },
-      { date: '2026-09-21', logged: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, Witr: false } }
+      { date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } }
     ];
 
     function init() {
-      updateUI();
+      if (currentUser) {
+        renderAuthHeader();
+        populateUserData();
+      }
       renderLogs();
       renderLeaderboard();
       document.getElementById('cert-date').valueAsDate = new Date();
     }
 
-    function updateUI() {
-      document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
-      document.getElementById('user-streak').innerText = `${currentUser.streak} Days`;
-      document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
+    function renderAuthHeader() {
+      document.getElementById('auth-section').innerHTML = `
+        <div class="flex items-center space-x-3">
+          <span class="text-xs text-emerald-400 font-semibold">${currentUser.name}</span>
+          <button onclick="logout()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded">Logout</button>
+        </div>
+      `;
+    }
+
+    function populateUserData() {
+      document.getElementById('user-xp').innerText = `${currentUser.xp || 0} XP`;
+      document.getElementById('user-streak').innerText = `${currentUser.streak || 0} Days`;
+      document.getElementById('user-freezes').innerText = `${currentUser.freezes || 2} Left`;
+      document.getElementById('q-name').value = currentUser.name;
+      document.getElementById('q-email').value = currentUser.email;
     }
 
     function switchTab(tabName) {
@@ -254,7 +285,7 @@
         
         const header = document.createElement('div');
         header.className = 'flex justify-between items-center border-b border-gray-800 pb-2';
-        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === new Date().toISOString().split('T')[0] ? 'Today - ' : ''}${log.date}</span><span class="text-xs text-gray-400">Click to toggle completion</span>`;
+        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === todayStr ? 'Today - ' : ''}${log.date}</span><span class="text-xs text-gray-400">Click prayer to log completion</span>`;
         card.appendChild(header);
 
         const grid = document.createElement('div');
@@ -275,37 +306,46 @@
     }
 
     function togglePrayer(logIdx, prayer) {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+
       const currentState = dailyLogs[logIdx].logged[prayer];
       dailyLogs[logIdx].logged[prayer] = !currentState;
       
-      // Update XP
-      currentUser.xp += !currentState ? 10 : -10;
-      
+      currentUser.xp = (currentUser.xp || 0) + (!currentState ? 10 : -10);
+      if (currentUser.xp < 0) currentUser.xp = 0;
+
       localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
-      localStorage.setItem('tadarak_user', JSON.stringify(currentUser));
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
       
-      updateUI();
+      // Update in Leaderboard list
+      let match = allUsers.find(u => u.email === currentUser.email);
+      if(match) match.xp = currentUser.xp;
+      localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
+
+      populateUserData();
       renderLogs();
+      renderLeaderboard();
     }
 
     function renderLeaderboard() {
-      const users = [
-        { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14 },
-        { name: 'Ahmed K.', xp: 980, streak: 8 },
-        { name: currentUser.email, xp: currentUser.xp, streak: currentUser.streak },
-        { name: 'Bilal M.', xp: 420, streak: 4 }
-      ].sort((a, b) => b.xp - a.xp);
-
       const body = document.getElementById('leaderboard-body');
       body.innerHTML = '';
-      users.forEach((u, i) => {
-        if(u.name === currentUser.email) document.getElementById('user-rank').innerText = `#${i+1}`;
+      
+      allUsers.sort((a, b) => b.xp - a.xp);
+
+      allUsers.forEach((u, i) => {
+        if(currentUser && u.email === currentUser.email) {
+          document.getElementById('user-rank').innerText = `#${i+1}`;
+        }
         body.innerHTML += `
           <tr class="hover:bg-gray-800/40">
             <td class="p-4 font-bold ${i===0 ? 'text-yellow-400' : 'text-gray-400'}">#${i+1}</td>
             <td class="p-4 text-white font-medium">${u.name}</td>
-            <td class="p-4 text-emerald-400 font-bold">${u.xp} XP</td>
-            <td class="p-4 text-orange-400"><i class="fa-solid fa-fire mr-1"></i>${u.streak}d</td>
+            <td class="p-4 text-emerald-400 font-bold">${u.xp || 0} XP</td>
+            <td class="p-4 text-orange-400"><i class="fa-solid fa-fire mr-1"></i>${u.streak || 0}d</td>
           </tr>
         `;
       });
@@ -314,33 +354,48 @@
     function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-modal').classList.add('flex'); }
     function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('auth-modal').classList.remove('flex'); }
 
-    function handleAuth() {
+    function handleAuthSubmit(e) {
+      const name = document.getElementById('auth-name').value;
       const email = document.getElementById('auth-email').value;
-      if(email) {
-        currentUser.email = email;
-        localStorage.setItem('tadarak_user', JSON.stringify(currentUser));
-        document.getElementById('auth-section').innerHTML = `<span class="text-xs text-emerald-400 font-semibold">${email}</span>`;
-        closeAuthModal();
-        renderLeaderboard();
+      const dob = document.getElementById('auth-dob').value;
+
+      currentUser = { name, email, dob, xp: 0, streak: 1, freezes: 2 };
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+
+      let existing = allUsers.find(u => u.email === email);
+      if (!existing) {
+        allUsers.push(currentUser);
+        localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
       }
+
+      renderAuthHeader();
+      populateUserData();
+      renderLeaderboard();
+      closeAuthModal();
+    }
+
+    function logout() {
+      localStorage.removeItem('tadarak_session');
+      currentUser = null;
+      location.reload();
     }
 
     function generatePDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      const name = document.getElementById('cert-name').value || 'Valued User';
+      const name = currentUser ? currentUser.name : 'Valued User';
       const date = document.getElementById('cert-date').value;
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
+      doc.setFontSize(20);
       doc.text("TADARAK QADHA PROGRESS REPORT", 20, 30);
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       doc.text(`Issued To: ${name}`, 20, 50);
       doc.text(`Date of Issue: ${date}`, 20, 60);
-      doc.text(`Total Earned XP: ${currentUser.xp} XP`, 20, 70);
-      doc.text(`Active Streak: ${currentUser.streak} Consecutive Days`, 20, 80);
+      doc.text(`Total Earned XP: ${currentUser ? currentUser.xp : 0} XP`, 20, 70);
+      doc.text(`Active Streak: ${currentUser ? currentUser.streak : 0} Consecutive Days`, 20, 80);
 
       doc.setDrawColor(16, 185, 129);
       doc.line(20, 95, 190, 95);
