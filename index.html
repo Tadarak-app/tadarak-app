@@ -12,6 +12,10 @@
   <!-- jsPDF for Certificate Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+  <!-- Firebase App & Firestore JS SDKs (v9 Compat Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <style>
     .glass-card {
       background: rgba(255, 255, 255, 0.04);
@@ -158,7 +162,7 @@
     <section id="content-leaderboard" class="hidden space-y-6">
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Weekly Hall of Fame</h2>
-        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Live Rankings</span>
+        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Live Global Updates</span>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table class="w-full text-left text-sm">
@@ -261,7 +265,7 @@
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs text-gray-400 text-center">Profile details will be sent to admin (czarzohaib@gmail.com)</p>
+      <p class="text-xs text-gray-400 text-center">Profile details will sync to the central Tadarak leaderboard.</p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
         <input type="text" name="fullName" id="auth-name" placeholder="Full Name" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
@@ -278,15 +282,27 @@
     </div>
   </div>
 
-  <!-- APP SCRIPT ENGINE -->
+  <!-- APP SCRIPT ENGINE WITH FIREBASE -->
   <script>
+    // 1. Initialize Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDR80Qx7kSLbWUF2qfnNmlDso_3CGO2a8g",
+      authDomain: "tadarak-app.firebaseapp.com",
+      projectId: "tadarak-app",
+      storageBucket: "tadarak-app.firebasestorage.app",
+      messagingSenderId: "727719773635",
+      appId: "1:727719773635:web:e3482cb9eaed9761e5a976",
+      measurementId: "G-NEREY0PHW8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
     
     // Load session persistence
     let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
-    let allUsers = JSON.parse(localStorage.getItem('tadarak_global_users')) || [
-      { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14, dob: '2006-01-01' }
-    ];
+    let globalUsers = [];
 
     let todayStr = new Date().toISOString().split('T')[0];
     let dailyLogs = JSON.parse(localStorage.getItem('tadarak_logs')) || [
@@ -311,7 +327,7 @@
       }
       
       renderLogs();
-      renderLeaderboard();
+      listenToGlobalLeaderboard();
       document.getElementById('cert-date').valueAsDate = new Date();
     }
 
@@ -440,23 +456,36 @@
       localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
       
-      // Update in Leaderboard list
-      let match = allUsers.find(u => u.email === currentUser.email);
-      if (match) match.xp = currentUser.xp;
-      localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
+      // Sync update to Firebase Firestore globally
+      syncUserToFirebase(currentUser);
 
       populateUserData();
       renderLogs();
-      renderLeaderboard();
+    }
+
+    // FIREBASE REALTIME LEADERBOARD LISTENER
+    function listenToGlobalLeaderboard() {
+      db.collection("users").orderBy("xp", "desc").onSnapshot((snapshot) => {
+        globalUsers = [];
+        snapshot.forEach((doc) => {
+          globalUsers.push(doc.data());
+        });
+        renderLeaderboard();
+      }, (error) => {
+        console.error("Error fetching leaderboard: ", error);
+      });
     }
 
     function renderLeaderboard() {
       const body = document.getElementById('leaderboard-body');
       body.innerHTML = '';
-      
-      allUsers.sort((a, b) => b.xp - a.xp);
 
-      allUsers.forEach((u, i) => {
+      if (globalUsers.length === 0) {
+        body.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">No members registered yet. Be the first!</td></tr>`;
+        return;
+      }
+
+      globalUsers.forEach((u, i) => {
         if (currentUser && u.email === currentUser.email) {
           document.getElementById('user-rank').innerText = `#${i+1}`;
         }
@@ -479,21 +508,36 @@
       const email = document.getElementById('auth-email').value;
       const dob = document.getElementById('auth-dob').value;
 
-      currentUser = { name, email, dob, xp: currentUser ? currentUser.xp : 0, streak: 1, freezes: 2 };
+      currentUser = { 
+        name: name, 
+        email: email, 
+        dob: dob, 
+        xp: currentUser ? (currentUser.xp || 0) : 0, 
+        streak: currentUser ? (currentUser.streak || 1) : 1, 
+        freezes: currentUser ? (currentUser.freezes || 2) : 2 
+      };
+      
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
 
-      let existingIdx = allUsers.findIndex(u => u.email === email);
-      if (existingIdx !== -1) {
-        allUsers[existingIdx] = currentUser;
-      } else {
-        allUsers.push(currentUser);
-      }
-      localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
+      // Save user to Firebase
+      syncUserToFirebase(currentUser);
 
       renderAuthHeader();
       populateUserData();
-      renderLeaderboard();
       closeAuthModal();
+    }
+
+    function syncUserToFirebase(userObj) {
+      if (!userObj || !userObj.email) return;
+      // Sanitize email to use as document ID
+      const docId = userObj.email.replace(/[^a-zA-Z0-9]/g, "_");
+      db.collection("users").doc(docId).set(userObj, { merge: true })
+        .then(() => {
+          console.log("User synced with Firebase");
+        })
+        .catch((error) => {
+          console.error("Error syncing to Firebase: ", error);
+        });
     }
 
     function logout() {
