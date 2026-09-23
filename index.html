@@ -85,19 +85,73 @@
 
     <!-- TABS NAVIGATION -->
     <div class="flex border-b border-gray-800 space-x-8 mb-6 text-sm font-medium">
-      <button onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Daily Qadha Log</button>
+      <button onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Home & Calculator</button>
       <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame</button>
       <button onclick="switchTab('report')" id="tab-report" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Progress & Certificate</button>
       <button onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About CEO & FAQs</button>
     </div>
 
-    <!-- TAB 1: DYNAMIC DAILY QADHA LOG -->
+    <!-- TAB 1: HOME, QADHA ENGINE CALCULATOR & DAILY LOG -->
     <section id="content-daily" class="space-y-6">
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-bold">Daily Qadha Tracker</h2>
-        <span class="text-xs text-gray-400">Newest date on top (+10 XP per prayer)</span>
+      
+      <!-- LIFETIME QADHA ENGINE & PROJECTION SUMMARY -->
+      <div class="glass-card p-6 rounded-xl border border-emerald-500/30 space-y-6">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
+          <div>
+            <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
+              <i class="fa-solid fa-calculator"></i> Lifetime Qadha Calculator & Projection Engine
+            </h2>
+            <p class="text-xs text-gray-400">Automated calculation based on Age of Puberty (Age 12) through today.</p>
+          </div>
+          <button onclick="openAuthModal()" class="text-xs text-emerald-400 underline hover:text-emerald-300 self-start md:self-auto">
+            Update Date of Birth
+          </button>
+        </div>
+
+        <!-- STATS GRID -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+            <p class="text-xs text-gray-400 mb-1">Total Obligation</p>
+            <p id="calc-total" class="text-xl font-bold text-white">0</p>
+            <p class="text-[10px] text-gray-500">Prayers (Fard + Witr)</p>
+          </div>
+          <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+            <p class="text-xs text-gray-400 mb-1">Completed Qadha</p>
+            <p id="calc-completed" class="text-xl font-bold text-emerald-400">0</p>
+            <p class="text-[10px] text-gray-500">Prayers Logged</p>
+          </div>
+          <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+            <p class="text-xs text-gray-400 mb-1">Remaining Obligations</p>
+            <p id="calc-remaining" class="text-xl font-bold text-yellow-400">0</p>
+            <p class="text-[10px] text-gray-500">Prayers Left</p>
+          </div>
+          <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+            <p class="text-xs text-gray-400 mb-1">Est. Completion Date</p>
+            <p id="calc-completion-date" class="text-xl font-bold text-blue-400">--</p>
+            <p id="calc-pace-note" class="text-[10px] text-gray-500">At pace of 1 extra set/day</p>
+          </div>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs font-semibold">
+            <span class="text-gray-400">Overall Completion Rate</span>
+            <span id="calc-percent" class="text-emerald-400">0%</span>
+          </div>
+          <div class="w-full bg-gray-800 rounded-full h-3.5 overflow-hidden p-0.5 border border-gray-700">
+            <div id="calc-progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
       </div>
-      <div id="qadha-log-container" class="space-y-4"></div>
+
+      <!-- SECONDARY: DAILY QADHA TRACKER -->
+      <div class="space-y-4 pt-4">
+        <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+          <h3 class="text-lg font-bold text-white">Daily Qadha Micro-Log</h3>
+          <span class="text-xs text-gray-400">Newest date automatically on top (+10 XP per prayer)</span>
+        </div>
+        <div id="qadha-log-container" class="space-y-4"></div>
+      </div>
     </section>
 
     <!-- TAB 2: HALL OF FAME LEADERBOARD -->
@@ -185,7 +239,7 @@
           </div>
         </div>
 
-        <!-- SUBMIT QUESTION TO CEO FORM (Auto-sends to czarzohaib@gmail.com) -->
+        <!-- SUBMIT QUESTION TO CEO FORM -->
         <div class="glass-card p-6 rounded-xl space-y-4">
           <h3 class="text-lg font-bold text-white">Ask the CEO Direct</h3>
           <p class="text-xs text-gray-400">Have a question or suggestion? Submit below to send a direct message to CEO Zohaib Qaiser.</p>
@@ -231,7 +285,7 @@
     // Load session persistence
     let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
     let allUsers = JSON.parse(localStorage.getItem('tadarak_global_users')) || [
-      { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14 }
+      { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14, dob: '2006-01-01' }
     ];
 
     let todayStr = new Date().toISOString().split('T')[0];
@@ -240,10 +294,22 @@
     ];
 
     function init() {
+      // Auto-ensure today's date card exists on top
+      if (dailyLogs.length === 0 || dailyLogs[0].date !== todayStr) {
+        dailyLogs.unshift({
+          date: todayStr,
+          logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false }
+        });
+        localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+      }
+
       if (currentUser) {
         renderAuthHeader();
         populateUserData();
+      } else {
+        calculateQadhaMetrics();
       }
+      
       renderLogs();
       renderLeaderboard();
       document.getElementById('cert-date').valueAsDate = new Date();
@@ -264,6 +330,60 @@
       document.getElementById('user-freezes').innerText = `${currentUser.freezes || 2} Left`;
       document.getElementById('q-name').value = currentUser.name;
       document.getElementById('q-email').value = currentUser.email;
+      
+      calculateQadhaMetrics();
+    }
+
+    function calculateQadhaMetrics() {
+      if (!currentUser || !currentUser.dob) {
+        document.getElementById('calc-total').innerText = "Set DOB";
+        document.getElementById('calc-completed').innerText = "0";
+        document.getElementById('calc-remaining').innerText = "Set DOB";
+        document.getElementById('calc-completion-date').innerText = "--";
+        document.getElementById('calc-percent').innerText = "0%";
+        document.getElementById('calc-progress-bar').style.width = "0%";
+        return;
+      }
+
+      const dob = new Date(currentUser.dob);
+      const today = new Date();
+      
+      // Calculate puberty starting age (Standard 12 years)
+      const pubertyDate = new Date(dob.getFullYear() + 12, dob.getMonth(), dob.getDate());
+      
+      // Total days missed from puberty to today
+      const diffTime = Math.max(0, today - pubertyDate);
+      const totalDaysMissed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Total obligation (6 prayers per day: 5 Fard + 1 Witr)
+      const totalTargetPrayers = totalDaysMissed * 6;
+      
+      // Count completed logged prayers (10 XP per logged prayer)
+      const completedPrayers = Math.floor((currentUser.xp || 0) / 10);
+      const remainingPrayers = Math.max(0, totalTargetPrayers - completedPrayers);
+      
+      // Progress calculation
+      const progressPercent = totalTargetPrayers > 0 
+        ? ((completedPrayers / totalTargetPrayers) * 100).toFixed(1) 
+        : 0;
+
+      // Completion calculation: assuming 1 extra Qadha set (6 prayers) per day
+      const daysToComplete = Math.ceil(remainingPrayers / 6);
+      const projectedDate = new Date();
+      projectedDate.setDate(today.getDate() + daysToComplete);
+
+      // Render UI
+      document.getElementById('calc-total').innerText = totalTargetPrayers.toLocaleString();
+      document.getElementById('calc-completed').innerText = completedPrayers.toLocaleString();
+      document.getElementById('calc-remaining').innerText = remainingPrayers.toLocaleString();
+      document.getElementById('calc-percent').innerText = `${progressPercent}%`;
+      document.getElementById('calc-progress-bar').style.width = `${Math.min(100, progressPercent)}%`;
+      
+      if (remainingPrayers === 0 && totalTargetPrayers > 0) {
+        document.getElementById('calc-completion-date').innerText = "Completed!";
+      } else {
+        document.getElementById('calc-completion-date').innerText = projectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
     }
 
     function switchTab(tabName) {
@@ -322,7 +442,7 @@
       
       // Update in Leaderboard list
       let match = allUsers.find(u => u.email === currentUser.email);
-      if(match) match.xp = currentUser.xp;
+      if (match) match.xp = currentUser.xp;
       localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
 
       populateUserData();
@@ -337,7 +457,7 @@
       allUsers.sort((a, b) => b.xp - a.xp);
 
       allUsers.forEach((u, i) => {
-        if(currentUser && u.email === currentUser.email) {
+        if (currentUser && u.email === currentUser.email) {
           document.getElementById('user-rank').innerText = `#${i+1}`;
         }
         body.innerHTML += `
@@ -359,14 +479,16 @@
       const email = document.getElementById('auth-email').value;
       const dob = document.getElementById('auth-dob').value;
 
-      currentUser = { name, email, dob, xp: 0, streak: 1, freezes: 2 };
+      currentUser = { name, email, dob, xp: currentUser ? currentUser.xp : 0, streak: 1, freezes: 2 };
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
 
-      let existing = allUsers.find(u => u.email === email);
-      if (!existing) {
+      let existingIdx = allUsers.findIndex(u => u.email === email);
+      if (existingIdx !== -1) {
+        allUsers[existingIdx] = currentUser;
+      } else {
         allUsers.push(currentUser);
-        localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
       }
+      localStorage.setItem('tadarak_global_users', JSON.stringify(allUsers));
 
       renderAuthHeader();
       populateUserData();
