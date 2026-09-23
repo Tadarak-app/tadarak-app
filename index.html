@@ -2,194 +2,361 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tadarak — Smart Qadha Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tadarak | Qadha Prayer Tracker & Leaderboard</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <!-- jsPDF for Certificate Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    body { background-color: #020617; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
   </style>
 </head>
-<body class="min-h-screen pb-12">
-  <!-- Top Header -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- NAVIGATION BAR -->
+  <nav class="border-b border-gray-800 bg-gray-900/50 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl">
-          ت
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white">Tadarak <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium ml-1">Hanafi Edition</span></h1>
-          <p class="text-xs text-slate-400">Tadarak.com — Smart Qadha Prayer Tracker</p>
-        </div>
+        <div class="bg-emerald-500 text-black p-2 rounded-lg font-bold text-xl"><i class="fa-solid fa-kaaba"></i></div>
+        <span class="text-xl font-bold tracking-wide text-white">TADARAK</span>
       </div>
-      <div className="flex items-center space-x-2 bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/50">
-        <span class="text-xs font-semibold text-amber-400 flex items-center px-2">
-          🔥 2 Day Streak
-        </span>
+      <div id="auth-section" class="flex items-center space-x-3">
+        <button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">
+          Sign In / Sign Up
+        </button>
       </div>
     </div>
-  </header>
+  </nav>
 
-  <!-- Navigation Tabs -->
-  <div class="max-w-5xl mx-auto px-4 mt-6">
-    <div class="flex border-b border-slate-800 space-x-8">
-      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pb-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400">
-        Dashboard & Analytics
-      </button>
-      <button onclick="switchTab('tracker')" id="tab-tracker" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-        Daily Qadha Log
-      </button>
-      <button onclick="switchTab('about')" id="tab-about" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-        About the CEO
-      </button>
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-grow">
+
+    <!-- USER STATS BAR (XP, STREAK, FREEZES) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
+        <i class="fa-solid fa-bolt text-yellow-400 text-2xl"></i>
+        <div>
+          <p class="text-xs text-gray-400">Total XP</p>
+          <p id="user-xp" class="text-xl font-bold text-white">0 XP</p>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
+        <i class="fa-solid fa-fire text-orange-500 text-2xl"></i>
+        <div>
+          <p class="text-xs text-gray-400">Current Streak</p>
+          <p id="user-streak" class="text-xl font-bold text-white">0 Days</p>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
+        <i class="fa-solid fa-snowflake text-blue-400 text-2xl"></i>
+        <div>
+          <p class="text-xs text-gray-400">Streak Freezes</p>
+          <p id="user-freezes" class="text-xl font-bold text-white">0 Left</p>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
+        <i class="fa-solid fa-trophy text-emerald-400 text-2xl"></i>
+        <div>
+          <p class="text-xs text-gray-400">Global Rank</p>
+          <p id="user-rank" class="text-xl font-bold text-white">#--</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="flex border-b border-gray-800 space-x-8 mb-6 text-sm font-medium">
+      <button onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Daily Qadha Log</button>
+      <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame (Leaderboard)</button>
+      <button onclick="switchTab('report')" id="tab-report" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Progress & Certificate</button>
+      <button onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About & FAQs</button>
+    </div>
+
+    <!-- TAB 1: DYNAMIC DAILY QADHA LOG -->
+    <section id="content-daily" class="space-y-6">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold">Daily Qadha Tracker</h2>
+        <span class="text-xs text-gray-400">Newest date appears on top (+10 XP per prayer)</span>
+      </div>
+
+      <!-- DYNAMIC LOG CONTAINER -->
+      <div id="qadha-log-container" class="space-y-4">
+        <!-- Log entries dynamically rendered via JavaScript -->
+      </div>
+    </section>
+
+    <!-- TAB 2: HALL OF FAME (DUOLINGO-STYLE LEADERBOARD) -->
+    <section id="content-leaderboard" class="hidden space-y-6">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold">Weekly Leaderboard (Hall of Fame)</h2>
+        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Updates live</span>
+      </div>
+      
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-800/60 text-gray-400 border-b border-gray-700">
+            <tr>
+              <th class="p-4">Rank</th>
+              <th class="p-4">User</th>
+              <th class="p-4">Weekly XP</th>
+              <th class="p-4">Streak</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body" class="divide-y divide-gray-800">
+            <!-- Dynamic Leaderboard Data -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 3: PROGRESS & CERTIFICATE GENERATOR -->
+    <section id="content-report" class="hidden space-y-6">
+      <div class="glass-card p-6 rounded-xl max-w-2xl mx-auto space-y-4">
+        <h2 class="text-xl font-bold text-center text-emerald-400">Generate Official Progress Report</h2>
+        <p class="text-xs text-gray-400 text-center">Export an official PDF report certified by the Founder & CEO.</p>
+        
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Custom Report Date</label>
+          <input type="date" id="cert-date" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">User Full Name</label>
+          <input type="text" id="cert-name" placeholder="Enter full legal name" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+        </div>
+
+        <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg transition text-sm">
+          <i class="fa-solid fa-file-pdf mr-2"></i>Download Certified PDF Report
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 4: ABOUT, FOUNDER & FAQ SECTION -->
+    <section id="content-about" class="hidden space-y-8">
+      <div class="grid md:grid-cols-3 gap-6">
+        <!-- Founder Profile Card -->
+        <div class="glass-card p-6 rounded-xl text-center space-y-4">
+          <div class="w-32 h-32 mx-auto rounded-full bg-gray-800 border-2 border-emerald-500 flex items-center justify-center overflow-hidden">
+            <img id="founder-img" src="https://via.placeholder.com/150?text=Your+Photo+Here" alt="CEO & Founder" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Zohaib Qaiser</h3>
+            <p class="text-xs text-emerald-400 font-semibold">Founder & CEO, Tadarak</p>
+          </div>
+          <p class="text-xs text-gray-400">
+            Dedicated to building structured, intelligent software solutions that empower Muslims worldwide to recover missed obligations seamlessly.
+          </p>
+        </div>
+
+        <!-- Story & Vision -->
+        <div class="md:col-span-2 glass-card p-6 rounded-xl space-y-4">
+          <h2 class="text-xl font-bold text-emerald-400">Why Tadarak Was Made</h2>
+          <p class="text-sm text-gray-300 leading-relaxed">
+            Tadarak (تدارك) stems from the Arabic imperative to rectifying, catching up, or making amends before time elapses. Many believers face uncertainties regarding exact counts of unperformed prayers across years. 
+          </p>
+          <p class="text-sm text-gray-300 leading-relaxed">
+            Tadarak was engineered as an all-in-one digital ecosystem combining Hanafi-compliant calculation engines, daily micro-logging, and social accountability mechanics to turn daunting Qadha goals into disciplined, achievable daily habits.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQs -->
+      <div class="glass-card p-6 rounded-xl space-y-4">
+        <h3 class="text-lg font-bold text-white">Frequently Asked Questions</h3>
+        <div class="space-y-3 text-sm">
+          <details class="bg-gray-800/50 p-3 rounded-lg">
+            <summary class="font-semibold cursor-pointer text-emerald-400">How are missed prayers calculated?</summary>
+            <p class="mt-2 text-gray-300 text-xs">Calculations start from the age of puberty (defaulted to 12 years) up to your current age, adjusting for daily logged fulfillments.</p>
+          </details>
+          <details class="bg-gray-800/50 p-3 rounded-lg">
+            <summary class="font-semibold cursor-pointer text-emerald-400">How do Streak Freezes work?</summary>
+            <p class="mt-2 text-gray-300 text-xs">If you miss logging for a single day, a Streak Freeze is automatically consumed from your profile balance to protect your consecutive streak count.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- AUTH MODAL -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
+    <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-sm w-full space-y-4">
+      <h3 class="text-xl font-bold text-white text-center">Sign In / Register</h3>
+      <input type="email" id="auth-email" placeholder="Email address" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+      <input type="password" id="auth-pass" placeholder="Password" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+      <button onclick="handleAuth()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg transition text-sm">Continue</button>
+      <button onclick="closeAuthModal()" class="w-full text-xs text-gray-400 hover:text-white">Cancel</button>
     </div>
   </div>
 
-  <!-- Tab 1: Dashboard -->
-  <main id="view-dashboard" class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-      <h2 class="text-base font-semibold text-slate-200 mb-4">Account & Baligh Setup (Age 12 Calculator)</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Date of Birth</label>
-          <input type="date" id="dob" value="2009-11-21" onchange="recalculate()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Qadha Start Date</label>
-          <input type="date" id="qadhaStart" value="2026-09-20" onchange="recalculate()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Fiqh Compliance</label>
-          <div class="flex items-center h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-emerald-400 font-medium">
-            🛡️ Hanafi (5 Farz + 3 Witr Daily)
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Metrics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-        <p class="text-xs text-slate-400">Total Target Prayers</p>
-        <p id="stat-target" class="text-2xl font-bold text-slate-100 mt-1">0</p>
-        <p id="stat-days" class="text-[10px] text-slate-500 mt-1">0 days × 6 prayers</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-        <p class="text-xs text-slate-400">Completed Prayers</p>
-        <p id="stat-completed" class="text-2xl font-bold text-emerald-400 mt-1">12</p>
-        <p class="text-[10px] text-emerald-500/80 mt-1">Logged in tracker</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-        <p class="text-xs text-slate-400">Remaining Balance</p>
-        <p id="stat-remaining" class="text-2xl font-bold text-amber-400 mt-1">0</p>
-        <p class="text-[10px] text-amber-500/80 mt-1">Pending Qadha</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-        <p class="text-xs text-slate-400">Completion Pace</p>
-        <p class="text-2xl font-bold text-blue-400 mt-1">6.0 <span class="text-xs text-slate-400 font-normal">/ day</span></p>
-        <p class="text-[10px] text-blue-500/80 mt-1">Average daily rate</p>
-      </div>
-    </div>
-
-    <!-- Projection Banner -->
-    <div class="bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-2xl p-6">
-      <h3 class="text-sm font-semibold text-emerald-400">Adaptive Completion Projection</h3>
-      <p class="text-lg font-bold text-slate-100 mt-0.5">
-        Projected Finish Date: <span id="stat-projection" class="text-emerald-300">--</span>
-      </p>
-      <p id="stat-baligh" class="text-xs text-slate-400 mt-1">Calculated based on Baligh age 12.</p>
-    </div>
-  </main>
-
-  <!-- Tab 2: Tracker -->
-  <main id="view-tracker" class="max-w-5xl mx-auto px-4 mt-6 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h2 class="text-base font-semibold text-slate-100">Daily Qadha Log (Hanafi Framework)</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Tap checkmarks as you offer Qadha prayers alongside daily Namaz.</p>
-        </div>
-        <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">6 Prayers / Day</span>
-      </div>
-
-      <div class="space-y-3">
-        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span class="text-xs font-semibold text-slate-300">2026-09-20</span>
-          <div class="grid grid-cols-6 gap-2 w-full max-w-xl">
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Fajr (2)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Dhuhr (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Asr (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Maghrib (3)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Isha (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Witr (3)</button>
-          </div>
-        </div>
-        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span class="text-xs font-semibold text-slate-300">2026-09-21</span>
-          <div class="grid grid-cols-6 gap-2 w-full max-w-xl">
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Fajr (2)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Dhuhr (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Asr (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Maghrib (3)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Isha (4)</button>
-            <button class="py-2 rounded-lg border text-xs bg-emerald-500/20 border-emerald-500/50 text-emerald-300">Witr (3)</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- Tab 3: About CEO -->
-  <main id="view-about" class="max-w-3xl mx-auto px-4 mt-6 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
-      <div class="w-24 h-24 mx-auto rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center text-slate-200 font-bold text-2xl mb-4">
-        ZQ
-      </div>
-      <h2 class="text-2xl font-bold text-white">Zohaib Qaiser</h2>
-      <p class="text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1">Founder & CEO — Tadarak.com</p>
-      <blockquote class="mt-6 text-slate-300 italic text-sm leading-relaxed bg-slate-950/60 p-6 rounded-2xl border border-slate-800">
-        &ldquo;All men dream: but not equally. Those who dream by night in the dusty recesses of their minds wake in the day to find that it was vanity: but the dreamers of the day are dangerous men, for they may act their dreams with open eyes, to make it possible. This I did&rdquo;
-      </blockquote>
-    </div>
-  </main>
-
+  <!-- APP LOGIC SCRIPT -->
   <script>
-    function switchTab(tab) {
-      document.getElementById('view-dashboard').classList.add('hidden');
-      document.getElementById('view-tracker').classList.add('hidden');
-      document.getElementById('view-about').classList.add('hidden');
+    // State management using LocalStorage backup
+    let currentUser = JSON.parse(localStorage.getItem('tadarak_user')) || {
+      email: 'Guest',
+      xp: 120,
+      streak: 3,
+      freezes: 2,
+      name: 'User'
+    };
 
-      document.getElementById('tab-dashboard').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
-      document.getElementById('tab-tracker').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
-      document.getElementById('tab-about').className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400";
+    const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
+    
+    // Sample Daily Data (Newest First)
+    let dailyLogs = JSON.parse(localStorage.getItem('tadarak_logs')) || [
+      { date: '2026-09-23', logged: { Fajr: true, Dhuhr: true, Asr: false, Maghrib: false, Isha: false, Witr: false } },
+      { date: '2026-09-22', logged: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, Witr: true } },
+      { date: '2026-09-21', logged: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, Witr: false } }
+    ];
 
-      document.getElementById('view-' + tab).classList.remove('hidden');
-      document.getElementById('tab-' + tab).className = "pb-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400";
+    function init() {
+      updateUI();
+      renderLogs();
+      renderLeaderboard();
+      document.getElementById('cert-date').valueAsDate = new Date();
     }
 
-    function recalculate() {
-      const dobVal = new Date(document.getElementById('dob').value);
-      const startVal = new Date(document.getElementById('qadhaStart').value);
+    function updateUI() {
+      document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
+      document.getElementById('user-streak').innerText = `${currentUser.streak} Days`;
+      document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
+    }
+
+    function switchTab(tabName) {
+      ['daily', 'leaderboard', 'report', 'about'].forEach(t => {
+        document.getElementById(`content-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).className = "pb-3 border-b-2 border-transparent text-gray-400 hover:text-white";
+      });
+      document.getElementById(`content-${tabName}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabName}`).className = "pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold";
+    }
+
+    function renderLogs() {
+      const container = document.getElementById('qadha-log-container');
+      container.innerHTML = '';
+
+      dailyLogs.forEach((log, logIdx) => {
+        const card = document.createElement('div');
+        card.className = 'glass-card p-4 rounded-xl space-y-3';
+        
+        const header = document.createElement('div');
+        header.className = 'flex justify-between items-center border-b border-gray-800 pb-2';
+        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === new Date().toISOString().split('T')[0] ? 'Today - ' : ''}${log.date}</span><span class="text-xs text-gray-400">Click to toggle completion</span>`;
+        card.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-3 md:grid-cols-6 gap-2';
+
+        prayersList.forEach(prayer => {
+          const btn = document.createElement('button');
+          const isDone = log.logged[prayer];
+          btn.className = `p-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`;
+          btn.innerHTML = `<i class="fa-solid ${isDone ? 'fa-check' : 'fa-plus'}"></i><span>${prayer}</span>`;
+          btn.onclick = () => togglePrayer(logIdx, prayer);
+          grid.appendChild(btn);
+        });
+
+        card.appendChild(grid);
+        container.appendChild(card);
+      });
+    }
+
+    function togglePrayer(logIdx, prayer) {
+      const currentState = dailyLogs[logIdx].logged[prayer];
+      dailyLogs[logIdx].logged[prayer] = !currentState;
       
-      const baligh = new Date(dobVal.getFullYear() + 12, dobVal.getMonth(), dobVal.getDate());
-      const diffTime = Math.max(0, startVal - baligh);
-      const missedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const targetPrayers = missedDays * 6;
-      const completed = 12;
-      const remaining = Math.max(0, targetPrayers - completed);
-
-      document.getElementById('stat-target').innerText = targetPrayers.toLocaleString();
-      document.getElementById('stat-days').innerText = missedDays.toLocaleString() + " days × 6 prayers";
-      document.getElementById('stat-remaining').innerText = remaining.toLocaleString();
-      document.getElementById('stat-baligh').innerText = "Calculated based on Baligh date (Age 12): " + baligh.toISOString().split('T')[0];
-
-      const estDays = Math.ceil(remaining / 6);
-      const projDate = new Date();
-      projDate.setDate(projDate.getDate() + estDays);
-      document.getElementById('stat-projection').innerText = projDate.toISOString().split('T')[0];
+      // Update XP
+      currentUser.xp += !currentState ? 10 : -10;
+      
+      localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+      localStorage.setItem('tadarak_user', JSON.stringify(currentUser));
+      
+      updateUI();
+      renderLogs();
     }
 
-    recalculate();
+    function renderLeaderboard() {
+      const users = [
+        { name: 'Zohaib Qaiser (CEO)', xp: 1450, streak: 14 },
+        { name: 'Ahmed K.', xp: 980, streak: 8 },
+        { name: currentUser.email, xp: currentUser.xp, streak: currentUser.streak },
+        { name: 'Bilal M.', xp: 420, streak: 4 }
+      ].sort((a, b) => b.xp - a.xp);
+
+      const body = document.getElementById('leaderboard-body');
+      body.innerHTML = '';
+      users.forEach((u, i) => {
+        if(u.name === currentUser.email) document.getElementById('user-rank').innerText = `#${i+1}`;
+        body.innerHTML += `
+          <tr class="hover:bg-gray-800/40">
+            <td class="p-4 font-bold ${i===0 ? 'text-yellow-400' : 'text-gray-400'}">#${i+1}</td>
+            <td class="p-4 text-white font-medium">${u.name}</td>
+            <td class="p-4 text-emerald-400 font-bold">${u.xp} XP</td>
+            <td class="p-4 text-orange-400"><i class="fa-solid fa-fire mr-1"></i>${u.streak}d</td>
+          </tr>
+        `;
+      });
+    }
+
+    function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-modal').classList.add('flex'); }
+    function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('auth-modal').classList.remove('flex'); }
+
+    function handleAuth() {
+      const email = document.getElementById('auth-email').value;
+      if(email) {
+        currentUser.email = email;
+        localStorage.setItem('tadarak_user', JSON.stringify(currentUser));
+        document.getElementById('auth-section').innerHTML = `<span class="text-xs text-emerald-400 font-semibold">${email}</span>`;
+        closeAuthModal();
+        renderLeaderboard();
+      }
+    }
+
+    function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const name = document.getElementById('cert-name').value || 'Valued User';
+      const date = document.getElementById('cert-date').value;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("TADARAK QADHA PROGRESS REPORT", 20, 30);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Issued To: ${name}`, 20, 50);
+      doc.text(`Date of Issue: ${date}`, 20, 60);
+      doc.text(`Total Earned XP: ${currentUser.xp} XP`, 20, 70);
+      doc.text(`Active Streak: ${currentUser.streak} Consecutive Days`, 20, 80);
+
+      doc.setDrawColor(16, 185, 129);
+      doc.line(20, 95, 190, 95);
+
+      doc.setFont("helvetica", "italic");
+      doc.text("Verified & Certified by Tadarak Systems Engine", 20, 110);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Zohaib Qaiser", 20, 130);
+      doc.setFont("helvetica", "normal");
+      doc.text("Founder & CEO, Tadarak", 20, 137);
+
+      doc.save(`Tadarak_Report_${name.replace(/\s+/g, '_')}.pdf`);
+    }
+
+    window.onload = init;
   </script>
 </body>
 </html>
