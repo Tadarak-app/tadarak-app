@@ -142,6 +142,23 @@
       transform: rotate(-90deg);
       transform-origin: 50% 50%;
     }
+
+    /* Tariq Animation Keyframes */
+    @keyframes tariqBounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-12px) scale(1.05); }
+    }
+    @keyframes tariqWings {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-15deg); }
+    }
+    .animate-tariq-bounce {
+      animation: tariqBounce 0.6s ease-in-out;
+    }
+    .animate-tariq-wing {
+      transform-origin: bottom center;
+      animation: tariqWings 0.8s ease-in-out infinite;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between" data-theme="emerald">
@@ -522,16 +539,39 @@
 
   </main>
 
-  <!-- INTERACTIVE MASCOT "TARIQ" FLOATING CONTAINER -->
+  <!-- INTERACTIVE MASCOT "TARIQ" FLOATING CONTAINER (ENHANCED FEATURES) -->
   <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-none">
-    <!-- Notification Toast Speech Bubble -->
-    <div id="mascot-speech" class="bg-gray-900 border border-emerald-500 text-xs text-white p-3 rounded-2xl shadow-2xl max-w-xs pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-2 flex items-center space-x-2">
-      <span id="mascot-msg">Assalamu Alaikum! I'm Tariq. Let's complete our Qadha prayers today! 🦅</span>
+    <!-- Notification Toast Speech Bubble with Mood Badge & Close Controls -->
+    <div id="mascot-speech" class="bg-gray-900 border border-emerald-500 text-xs text-white p-3 rounded-2xl shadow-2xl max-w-xs pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-2 flex flex-col space-y-1.5 relative">
+      <div class="flex items-center justify-between gap-2 border-b border-gray-800 pb-1">
+        <span id="tariq-mood-badge" class="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+          😊 Happy Tariq
+        </span>
+        <button onclick="hideMascotSpeech()" class="text-gray-400 hover:text-white text-xs px-1">✕</button>
+      </div>
+      <p id="mascot-msg" class="leading-relaxed">Assalamu Alaikum! I'm Tariq. Let's complete our Qadha prayers today! 🦅</p>
+      <!-- Quick Action Buttons Inside Speech Bubble -->
+      <div class="flex gap-1.5 pt-1">
+        <button onclick="triggerTariqHadith()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-emerald-400 font-semibold transition">
+          📜 Islamic Quote
+        </button>
+        <button onclick="triggerTariqMotivation()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-yellow-400 font-semibold transition">
+          ⚡ Motivate Me
+        </button>
+      </div>
     </div>
 
-    <!-- Mascot Canvas Container -->
-    <div onclick="triggerMascotClick()" class="w-24 h-24 relative pointer-events-auto cursor-pointer hover:scale-105 transition-transform duration-200">
+    <!-- Mascot Canvas Container with Visual Wing Elements & Expressions -->
+    <div id="mascot-avatar-container" onclick="triggerMascotClick()" class="w-24 h-24 relative pointer-events-auto cursor-pointer hover:scale-105 transition-transform duration-200">
       <svg id="mascot-svg" class="w-full h-full drop-shadow-xl" viewBox="0 0 100 100">
+        <!-- Wings for Dynamic Flapping Animation -->
+        <g id="mascot-wings">
+          <!-- Left Wing -->
+          <path id="wing-left" class="origin-bottom-right" d="M 22 62 C 10 50 5 70 20 75 Z" fill="#059669" />
+          <!-- Right Wing -->
+          <path id="wing-right" class="origin-bottom-left" d="M 78 62 C 90 50 95 70 80 75 Z" fill="#059669" />
+        </g>
+
         <!-- Body / Torso -->
         <path d="M 20 80 Q 50 20 80 80 Q 50 95 20 80 Z" fill="#10b981" />
         <!-- Belly -->
@@ -552,13 +592,21 @@
         <path d="M 40 28 L 60 28 L 57 15 L 43 15 Z" fill="#dc2626" />
         <line x1="50" y1="15" x2="65" y2="22" stroke="#f59e0b" stroke-width="2" />
         
-        <!-- Mood Expression Overlay (Sad Tears - Hidden by default) -->
+        <!-- Mood Expression Overlay: Sad Tears -->
         <g id="mascot-tears" class="hidden">
           <path d="M 38 55 Q 36 62 38 65 Q 40 62 38 55 Z" fill="#3b82f6" />
           <path d="M 62 55 Q 60 62 62 65 Q 64 62 62 55 Z" fill="#3b82f6" />
           <!-- Sad Eyebrows -->
           <line x1="30" y1="33" x2="44" y2="37" stroke="#000" stroke-width="2" />
           <line x1="70" y1="33" x2="56" y2="37" stroke="#000" stroke-width="2" />
+        </g>
+
+        <!-- Mood Expression Overlay: Ecstatic / Celebration Sparkles & Crown -->
+        <g id="mascot-crown" class="hidden">
+          <polygon points="42,12 46,6 50,12 54,6 58,12 58,15 42,15" fill="#f59e0b" stroke="#fef08a" stroke-width="0.5"/>
+          <circle cx="46" cy="6" r="1" fill="#ef4444"/>
+          <circle cx="50" cy="4" r="1.2" fill="#38bdf8"/>
+          <circle cx="54" cy="6" r="1" fill="#ef4444"/>
         </g>
       </svg>
     </div>
@@ -585,7 +633,7 @@
     </div>
   </div>
 
-  <!-- APP SCRIPT ENGINE WITH FIREBASE -->
+  <!-- APP SCRIPT ENGINE WITH FIREBASE & TARIQ ENHANCEMENTS -->
   <script>
     // 1. Initialize Firebase Config
     const firebaseConfig = {
@@ -620,265 +668,282 @@
       { date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } }
     ];
 
-    let audioEnabled = localStorage.getItem('tadarak_audio') !== 'false';
+    let audioEnabled = true;
 
-    // Web Audio API Synth Generator for Subtle Audio Feedback
-    function playAudioTone(freq = 587.33, type = 'sine', duration = 0.12) {
-      if (!audioEnabled) return;
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + duration);
-      } catch (e) {
-        // Audio context suppressed until user gesture
-      }
-    }
+    // --- ENHANCED TARIQ MASCOT SYSTEM ---
+    const tariqQuotes = [
+      "The most beloved deeds to Allah are those done consistently, even if they are small. (Sahih Bukhari)",
+      "Take benefit of five before five: your youth before your old age, your health before your sickness...",
+      "Prayer is the pillar of religion; whoever establishes it has established religion.",
+      "Inform me of a deed which will admit me into Paradise... Perform prayer, give Zakat, and maintain ties of kinship."
+    ];
 
-    function toggleAudioFeedback() {
-      audioEnabled = !audioEnabled;
-      localStorage.setItem('tadarak_audio', audioEnabled);
-      updateAudioButtonUI();
-      if (audioEnabled) playAudioTone(659.25, 'sine', 0.15);
-    }
+    const tariqMotivations = [
+      "Every single Qadha prayer logged is a weight lifted off your shoulders! Keep going! 🌟",
+      "Consistency turns mountains into dust. Step by step, you will reach your goal! 🏔️",
+      "You are stronger than procrastination. Log one more prayer today! 💪",
+      "Imagine the peace when your obligations are fully completed. You're making progress!"
+    ];
 
-    function updateAudioButtonUI() {
-      const icon = document.getElementById('audio-icon');
-      if (audioEnabled) {
-        icon.className = 'fa-solid fa-volume-high text-emerald-400';
+    function updateTariqMoodState() {
+      const streak = currentUser ? currentUser.streak : 0;
+      const tearsElem = document.getElementById('mascot-tears');
+      const crownElem = document.getElementById('mascot-crown');
+      const badgeElem = document.getElementById('tariq-mood-badge');
+
+      tearsElem.classList.add('hidden');
+      crownElem.classList.add('hidden');
+
+      if (streak >= 7) {
+        crownElem.classList.remove('hidden');
+        badgeElem.innerText = "👑 Royal Tariq";
+        badgeElem.className = "text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40";
+      } else if (streak === 0) {
+        tearsElem.classList.remove('hidden');
+        badgeElem.innerText = "😢 Lonely Tariq";
+        badgeElem.className = "text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40";
       } else {
-        icon.className = 'fa-solid fa-volume-xmark opacity-50';
+        badgeElem.innerText = "😊 Happy Tariq";
+        badgeElem.className = "text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
       }
     }
 
-    // Initialize App
-    document.addEventListener('DOMContentLoaded', () => {
-      init();
-      registerServiceWorker();
-      requestNotificationPermission();
+    function showMascotSpeech(text, autoHideMs = 6000) {
+      const speech = document.getElementById('mascot-speech');
+      const msg = document.getElementById('mascot-msg');
+      msg.innerText = text;
+      speech.classList.remove('opacity-0', 'translate-y-2');
+      speech.classList.add('opacity-100', 'translate-y-0');
+
+      if (autoHideMs > 0) {
+        setTimeout(() => {
+          hideMascotSpeech();
+        }, autoHideMs);
+      }
+    }
+
+    function hideMascotSpeech() {
+      const speech = document.getElementById('mascot-speech');
+      speech.classList.remove('opacity-100', 'translate-y-0');
+      speech.classList.add('opacity-0', 'translate-y-2');
+    }
+
+    function triggerMascotClick() {
+      const avatar = document.getElementById('mascot-avatar-container');
+      avatar.classList.add('animate-tariq-bounce');
+      setTimeout(() => avatar.classList.remove('animate-tariq-bounce'), 600);
+
+      const wingL = document.getElementById('wing-left');
+      const wingR = document.getElementById('wing-right');
+      wingL.classList.add('animate-tariq-wing');
+      wingR.classList.add('animate-tariq-wing');
+      setTimeout(() => {
+        wingL.classList.remove('animate-tariq-wing');
+        wingR.classList.remove('animate-tariq-wing');
+      }, 1600);
+
+      const streak = currentUser ? currentUser.streak : 0;
+      let greeting = `Assalamu Alaikum! I'm Tariq. You currently have a ${streak}-day streak! 🦅`;
+      if (streak === 0) {
+        greeting = "Tariq misses your activity! Log a Qadha prayer today to start a new streak!";
+      } else if (streak >= 7) {
+        greeting = "SubhanAllah! What an incredible streak! Tariq is wearing his crown proudly for you! 👑";
+      }
+      showMascotSpeech(greeting);
+    }
+
+    function triggerTariqHadith() {
+      const randomQuote = tariqQuotes[Math.floor(Math.random() * tariqQuotes.length)];
+      showMascotSpeech(`📜 Tariq's Reflection:\n"${randomQuote}"`, 8000);
+    }
+
+    function triggerTariqMotivation() {
+      const randomMotiv = tariqMotivations[Math.floor(Math.random() * tariqMotivations.length)];
+      showMascotSpeech(randomMotiv, 7000);
+    }
+
+    // --- EYE TRACKING FOR TARIQ ---
+    document.addEventListener('mousemove', (e) => {
+      const pupilL = document.getElementById('pupil-left');
+      const pupilR = document.getElementById('pupil-right');
+      if (!pupilL || !pupilR) return;
+
+      const rectL = pupilL.getBoundingClientRect();
+      const rectR = pupilR.getBoundingClientRect();
+
+      const calcAngle = (rect) => {
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        const angle = Math.atan2(dy, dx);
+        const dist = Math.min(2.5, Math.hypot(dx, dy) / 25);
+        return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
+      };
+
+      const offsetL = calcAngle(rectL);
+      const offsetR = calcAngle(rectR);
+
+      pupilL.style.transform = `translate(${offsetL.x}px, ${offsetL.y}px)`;
+      pupilR.style.transform = `translate(${offsetR.x}px, ${offsetR.y}px)`;
     });
 
-    function init() {
-      if (dailyLogs.length === 0 || dailyLogs[0].date !== todayStr) {
-        dailyLogs.unshift({
-          date: todayStr,
-          logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false }
-        });
-        localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
-      }
-
-      updateAudioButtonUI();
-
-      if (currentUser) {
-        renderAuthHeader();
-        populateUserData();
+    // --- AUDIO SYSTEM ---
+    function toggleAudioFeedback() {
+      audioEnabled = !audioEnabled;
+      const icon = document.getElementById('audio-icon');
+      if (audioEnabled) {
+        icon.className = "fa-solid fa-volume-high";
       } else {
-        calculateQadhaMetrics();
-      }
-      
-      renderLogs();
-      renderHeatmap();
-      listenToGlobalLeaderboard();
-      updateMascotMood();
-      document.getElementById('cert-date').valueAsDate = new Date();
-
-      setTimeout(() => {
-        showMascotSpeech("Assalamu Alaikum! I'm Tariq 🦅. Let's make progress on our Qadha today!");
-      }, 1500);
-    }
-
-    function changeTheme(themeName) {
-      document.body.setAttribute('data-theme', themeName);
-      if (audioEnabled) playAudioTone(523.25, 'triangle', 0.1);
-    }
-
-    function checkCosmeticUnlocks() {
-      if (!currentUser) return;
-      const xp = currentUser.xp || 0;
-      const streak = currentUser.streak || 0;
-
-      // Tier 1 Cosmetic: Andalusian Midnight (100 XP)
-      const optAndalucian = document.getElementById('opt-andalusian');
-      const badgeTheme1 = document.getElementById('badge-theme-1');
-      if (xp >= 100) {
-        optAndalucian.disabled = false;
-        optAndalucian.innerText = "🌊 Andalusian Midnight (Unlocked!)";
-        if (badgeTheme1) badgeTheme1.classList.remove('opacity-40');
-      }
-
-      // Tier 2 Cosmetic: Al-Aqsa Dawn (30-Day Streak)
-      const optAlaqsa = document.getElementById('opt-alaqsa');
-      const badgeTheme2 = document.getElementById('badge-theme-2');
-      if (streak >= 30) {
-        optAlaqsa.disabled = false;
-        optAlaqsa.innerText = "🕌 Al-Aqsa Dawn (Unlocked!)";
-        if (badgeTheme2) badgeTheme2.classList.remove('opacity-40');
+        icon.className = "fa-solid fa-volume-xmark";
       }
     }
 
-    function renderAuthHeader() {
-      document.getElementById('auth-section').innerHTML = `
-        <div class="flex items-center space-x-3">
-          <span class="text-xs text-emerald-400 font-semibold">${currentUser.name}</span>
-          <button onclick="logout()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded">Logout</button>
-        </div>
-      `;
+    function playClickSound() {
+      if (!audioEnabled) return;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
     }
 
-    function populateUserData() {
-      const xp = currentUser.xp || 0;
-      document.getElementById('user-xp').innerText = `${xp} XP`;
-      document.getElementById('user-streak').innerText = `${currentUser.streak || 0} Days`;
-      document.getElementById('user-freezes').innerText = `${currentUser.freezes || 2} Left`;
-      document.getElementById('q-name').value = currentUser.name;
-      document.getElementById('q-email').value = currentUser.email;
-      
-      const totalLogged = Math.floor(xp / 10);
-      if (totalLogged >= 1) document.getElementById('badge-1').classList.remove('opacity-40');
-      if ((currentUser.streak || 0) >= 3) document.getElementById('badge-2').classList.remove('opacity-40');
-      if (totalLogged >= 100) document.getElementById('badge-3').classList.remove('opacity-40');
-
-      checkCosmeticUnlocks();
-      calculateQadhaMetrics();
-      updateMascotMood();
-    }
-
-    function calculateQadhaMetrics() {
-      if (!currentUser || !currentUser.dob) {
-        document.getElementById('calc-total').innerText = "Set DOB";
-        document.getElementById('calc-completed').innerText = "0";
-        document.getElementById('calc-remaining').innerText = "Set DOB";
-        document.getElementById('calc-completion-date').innerText = "--";
-        document.getElementById('calc-percent').innerText = "0%";
-        document.getElementById('calc-progress-bar').style.width = "0%";
-        updateRingProgress(0);
-        return;
-      }
-
-      const dob = new Date(currentUser.dob);
-      const today = new Date();
-      
-      const pubertyDate = new Date(dob.getFullYear() + 12, dob.getMonth(), dob.getDate());
-      const diffTime = Math.max(0, today - pubertyDate);
-      const totalDaysMissed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      
-      const totalTargetPrayers = totalDaysMissed * 6;
-      const completedPrayers = Math.floor((currentUser.xp || 0) / 10);
-      const remainingPrayers = Math.max(0, totalTargetPrayers - completedPrayers);
-      
-      const progressPercent = totalTargetPrayers > 0 
-        ? ((completedPrayers / totalTargetPrayers) * 100).toFixed(1) 
-        : 0;
-
-      const dailyPace = parseInt(document.getElementById('pace-selector').value) || 6;
-      const daysToComplete = Math.ceil(remainingPrayers / dailyPace);
-      const projectedDate = new Date();
-      projectedDate.setDate(today.getDate() + daysToComplete);
-
-      document.getElementById('calc-total').innerText = totalTargetPrayers.toLocaleString();
-      document.getElementById('calc-completed').innerText = completedPrayers.toLocaleString();
-      document.getElementById('calc-remaining').innerText = remainingPrayers.toLocaleString();
-      document.getElementById('calc-percent').innerText = `${progressPercent}%`;
-      document.getElementById('calc-progress-bar').style.width = `${Math.min(100, progressPercent)}%`;
-      
-      updateRingProgress(progressPercent);
-
-      if (remainingPrayers === 0 && totalTargetPrayers > 0) {
-        document.getElementById('calc-completion-date').innerText = "Completed!";
-      } else {
-        document.getElementById('calc-completion-date').innerText = projectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-
-    function updateRingProgress(percent) {
-      const circle = document.getElementById('ring-progress-circle');
-      const text = document.getElementById('ring-percent-text');
-      const radius = circle.r.baseVal.value;
-      const circumference = 2 * Math.PI * radius; // 251.2
-      const strokeOffset = circumference - (percent / 100) * circumference;
-      
-      circle.style.strokeDashoffset = strokeOffset;
-      text.innerText = `${percent}%`;
-    }
-
-    // CUSTOM GOAL TARGET CALCULATOR
-    function calculateCustomGoal() {
-      if (!currentUser || !currentUser.dob) return;
-      const targetInput = document.getElementById('target-date-input').value;
-      if (!targetInput) return;
-
-      const targetDate = new Date(targetInput);
-      const today = new Date();
-      const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 0) {
-        document.getElementById('custom-goal-result').innerText = "Please select a future date!";
-        document.getElementById('apply-pace-btn').classList.add('hidden');
-        return;
-      }
-
-      const totalRemaining = parseInt(document.getElementById('calc-remaining').innerText.replace(/,/g, '')) || 0;
-      const requiredDaily = Math.ceil(totalRemaining / diffDays);
-
-      document.getElementById('custom-goal-result').innerText = `${requiredDaily} prayers/day (${(requiredDaily/6).toFixed(1)} sets) over ${diffDays} days`;
-      
-      const applyBtn = document.getElementById('apply-pace-btn');
-      applyBtn.classList.remove('hidden');
-      applyBtn.dataset.pace = requiredDaily;
-    }
-
-    function applyCustomGoalPace() {
-      const pace = parseInt(document.getElementById('apply-pace-btn').dataset.pace) || 6;
-      const selector = document.getElementById('pace-selector');
-      
-      // Update pace selector value or add dynamically
-      selector.value = pace > 18 ? 18 : (pace < 6 ? 6 : pace);
-      calculateQadhaMetrics();
-      showMascotSpeech(`Custom goal pace of ${pace} prayers/day set! 🎯`);
-      if (audioEnabled) playAudioTone(880, 'sine', 0.15);
-    }
-
+    // --- NAVIGATION TABS ---
     function switchTab(tabName) {
       ['daily', 'leaderboard', 'report', 'about'].forEach(t => {
         document.getElementById(`content-${t}`).classList.add('hidden');
-        document.getElementById(`tab-${t}`).className = "pb-3 border-b-2 border-transparent text-gray-400 hover:text-white";
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          btn.className = "pb-3 border-b-2 border-transparent text-gray-400 hover:text-white";
+        }
       });
       document.getElementById(`content-${tabName}`).classList.remove('hidden');
-      document.getElementById(`tab-${tabName}`).className = "pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold";
-      if (audioEnabled) playAudioTone(440, 'sine', 0.08);
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      if (activeBtn) {
+        activeBtn.className = "pb-3 border-b-2 border-emerald-500 text-emerald-400 font-semibold";
+      }
     }
 
-    function renderLogs() {
+    // --- CORE LOGIC & INITIALIZATION ---
+    function initApp() {
+      if (!currentUser) {
+        currentUser = {
+          fullName: "Guest Believer",
+          email: "guest@tadarak.org",
+          dob: "2000-01-01",
+          xp: 0,
+          streak: 0,
+          freezes: 1
+        };
+      }
+      updateUserStatsUI();
+      renderDailyLogs();
+      calculateQadhaMetrics();
+      renderHeatmap();
+      updateBadges();
+      fetchLeaderboard();
+      updateTariqMoodState();
+    }
+
+    function updateUserStatsUI() {
+      document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
+      document.getElementById('user-streak').innerText = `${currentUser.streak} Days`;
+      document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
+      
+      const authSec = document.getElementById('auth-section');
+      if (currentUser.email !== "guest@tadarak.org") {
+        authSec.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-gray-300 font-semibold">${currentUser.fullName}</span>
+            <button onclick="logout()" class="text-xs text-red-400 hover:underline">Sign Out</button>
+          </div>
+        `;
+      }
+    }
+
+    function openAuthModal() {
+      document.getElementById('auth-modal').classList.remove('hidden');
+      document.getElementById('auth-modal').classList.add('flex');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+      document.getElementById('auth-modal').classList.remove('flex');
+    }
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('auth-name').value;
+      const email = document.getElementById('auth-email').value;
+      const dob = document.getElementById('auth-dob').value;
+
+      currentUser.fullName = name;
+      currentUser.email = email;
+      currentUser.dob = dob;
+
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+      closeAuthModal();
+      updateUserStatsUI();
+      calculateQadhaMetrics();
+      
+      // Sync user profile to Firestore
+      db.collection("users").doc(email).set({
+        fullName: name,
+        email: email,
+        xp: currentUser.xp,
+        streak: currentUser.streak,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      showMascotSpeech(`Welcome, ${name}! Your profile is ready and synced! 🦅`);
+    }
+
+    function logout() {
+      localStorage.removeItem('tadarak_session');
+      currentUser = null;
+      initApp();
+    }
+
+    // --- DAILY QADHA LOGGING ---
+    function renderDailyLogs() {
       const container = document.getElementById('qadha-log-container');
       container.innerHTML = '';
 
-      dailyLogs.forEach((log, logIdx) => {
+      dailyLogs.forEach((logEntry, logIdx) => {
         const card = document.createElement('div');
-        card.className = 'glass-card p-4 rounded-xl space-y-3';
+        card.className = "glass-card p-4 rounded-xl space-y-3";
         
-        const header = document.createElement('div');
-        header.className = 'flex justify-between items-center border-b border-gray-800 pb-2';
-        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === todayStr ? 'Today - ' : ''}${log.date}</span><span class="text-xs opacity-70">Click prayer to log completion</span>`;
-        card.appendChild(header);
+        const dateHeader = document.createElement('div');
+        dateHeader.className = "flex justify-between items-center border-b border-gray-800 pb-2";
+        dateHeader.innerHTML = `
+          <span class="font-bold text-sm text-gray-200"><i class="fa-regular fa-calendar mr-2 text-emerald-400"></i>${logEntry.date}</span>
+          <span class="text-[11px] opacity-60">6 Prayers Available</span>
+        `;
+        card.appendChild(dateHeader);
 
         const grid = document.createElement('div');
-        grid.className = 'grid grid-cols-3 md:grid-cols-6 gap-2';
+        grid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2";
 
         prayersList.forEach(prayer => {
+          const isChecked = logEntry.logged[prayer];
           const btn = document.createElement('button');
-          const isDone = log.logged[prayer];
-          btn.className = `p-2.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-inner' : 'bg-gray-800 opacity-70 hover:opacity-100 hover:bg-gray-700'}`;
-          btn.innerHTML = `<i class="${isDone ? 'fa-solid fa-circle-check text-emerald-400' : 'fa-regular fa-circle'}"></i> <span>${prayer}</span>`;
           btn.onclick = () => togglePrayer(logIdx, prayer);
+          btn.className = `p-2.5 rounded-lg border text-xs font-semibold flex flex-col items-center justify-center gap-1 transition ${
+            isChecked 
+              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' 
+              : 'bg-gray-800/40 border-gray-700 text-gray-400 hover:border-gray-500'
+          }`;
+          btn.innerHTML = `
+            <i class="fa-solid ${isChecked ? 'fa-circle-check text-emerald-400' : 'fa-circle text-gray-600'} text-base"></i>
+            <span>${prayer}</span>
+          `;
           grid.appendChild(btn);
         });
 
@@ -888,122 +953,267 @@
     }
 
     function togglePrayer(logIdx, prayer) {
-      if (!currentUser) {
-        openAuthModal();
-        return;
+      playClickSound();
+      const current = dailyLogs[logIdx].logged[prayer];
+      dailyLogs[logIdx].logged[prayer] = !current;
+
+      if (!current) {
+        currentUser.xp += 10;
+        showMascotSpeech(`Great job! Logged ${prayer} (+10 XP)! 🌟`);
+      } else {
+        currentUser.xp = Math.max(0, currentUser.xp - 10);
       }
 
-      const currentStatus = dailyLogs[logIdx].logged[prayer];
-      dailyLogs[logIdx].logged[prayer] = !currentStatus;
-      
-      const xpChange = !currentStatus ? 10 : -10;
-      currentUser.xp = Math.max(0, (currentUser.xp || 0) + xpChange);
-      
-      localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
-      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-
-      if (!currentStatus && audioEnabled) playAudioTone(783.99, 'sine', 0.12); // G5 note
-
-      populateUserData();
-      renderLogs();
+      updateStreak();
+      saveData();
+      renderDailyLogs();
+      calculateQadhaMetrics();
       renderHeatmap();
-      syncUserToFirestore();
+      updateBadges();
+      updateTariqMoodState();
     }
 
-    // QUICK-LOG "LOG WHOLE DAY" BUTTON LOGIC
     function logWholeDayQuick() {
-      if (!currentUser) {
-        openAuthModal();
-        return;
+      playClickSound();
+      let todayEntry = dailyLogs.find(l => l.date === todayStr);
+      if (!todayEntry) {
+        todayEntry = { date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } };
+        dailyLogs.unshift(todayEntry);
       }
 
       let addedCount = 0;
-      const todayLog = dailyLogs[0].logged;
-      
-      prayersList.forEach(prayer => {
-        if (!todayLog[prayer]) {
-          todayLog[prayer] = true;
+      prayersList.forEach(p => {
+        if (!todayEntry.logged[p]) {
+          todayEntry.logged[p] = true;
           addedCount++;
         }
       });
 
       if (addedCount > 0) {
-        currentUser.xp = (currentUser.xp || 0) + (addedCount * 10);
-        localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
-        localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-        
-        if (audioEnabled) {
-          playAudioTone(523.25, 'sine', 0.1);
-          setTimeout(() => playAudioTone(659.25, 'sine', 0.1), 100);
-          setTimeout(() => playAudioTone(783.99, 'sine', 0.2), 200);
-        }
-
-        populateUserData();
-        renderLogs();
-        renderHeatmap();
-        syncUserToFirestore();
-        showMascotSpeech(`Mashallah! Logged full day (+${addedCount * 10} XP) ⚡`);
+        currentUser.xp += addedCount * 10;
+        showMascotSpeech(`Awesome! Whole day completed (+${addedCount * 10} XP)! ⚡`);
       } else {
-        showMascotSpeech("All 6 prayers for today are already checked! 🌟");
+        showMascotSpeech("Today is already completely logged! MashAllah!");
+      }
+
+      updateStreak();
+      saveData();
+      renderDailyLogs();
+      calculateQadhaMetrics();
+      renderHeatmap();
+      updateBadges();
+      updateTariqMoodState();
+    }
+
+    function updateStreak() {
+      const activeDays = dailyLogs.filter(l => Object.values(l.logged).some(val => val === true)).length;
+      currentUser.streak = activeDays;
+    }
+
+    function saveData() {
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+      localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+      updateUserStatsUI();
+      
+      if (currentUser.email !== "guest@tadarak.org") {
+        db.collection("users").doc(currentUser.email).set({
+          xp: currentUser.xp,
+          streak: currentUser.streak,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
       }
     }
 
-    // 30-DAY VISUAL HEATMAP RENDERER
-    function renderHeatmap() {
-      const container = document.getElementById('heatmap-grid-container');
-      if (!container) return;
-      container.innerHTML = '';
-
-      const days = [];
+    // --- CALCULATOR ENGINE ---
+    function calculateQadhaMetrics() {
+      const dobStr = currentUser.dob || "2000-01-01";
+      const dob = new Date(dobStr);
+      const pubertyAge = 12;
+      const pubertyDate = new Date(dob.getFullYear() + pubertyAge, dob.getMonth(), dob.getDate());
       const now = new Date();
 
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        
-        const log = dailyLogs.find(l => l.date === dateStr);
-        let completedCount = 0;
-        if (log && log.logged) {
-          completedCount = Object.values(log.logged).filter(Boolean).length;
-        }
+      let totalDaysObligated = Math.max(0, Math.floor((now - pubertyDate) / (1000 * 60 * 60 * 24)));
+      let totalObligation = totalDaysObligated * 6; // 6 prayers per day (5 Fard + Witr)
 
-        let bgClass = 'bg-gray-800/80 border border-gray-700/50';
-        if (completedCount >= 1 && completedCount <= 2) bgClass = 'bg-emerald-900/60 border border-emerald-700/50';
-        if (completedCount >= 3 && completedCount <= 5) bgClass = 'bg-emerald-600/80 border border-emerald-500/80';
-        if (completedCount === 6) bgClass = 'bg-emerald-400 border border-emerald-300 shadow-sm';
+      let totalCompleted = 0;
+      dailyLogs.forEach(l => {
+        Object.values(l.logged).forEach(v => {
+          if (v) totalCompleted++;
+        });
+      });
 
-        const tile = document.createElement('div');
-        tile.className = `heatmap-cell ${bgClass} cursor-pointer`;
-        tile.title = `${dateStr}: ${completedCount}/6 Qadha Completed`;
-        container.appendChild(tile);
+      let remaining = Math.max(0, totalObligation - totalCompleted);
+
+      const paceVal = parseInt(document.getElementById('pace-selector').value) || 6;
+      let daysToComplete = Math.ceil(remaining / paceVal);
+      let completionDate = new Date();
+      completionDate.setDate(completionDate.getDate() + daysToComplete);
+
+      document.getElementById('calc-total').innerText = totalObligation.toLocaleString();
+      document.getElementById('calc-completed').innerText = totalCompleted.toLocaleString();
+      document.getElementById('calc-remaining').innerText = remaining.toLocaleString();
+      document.getElementById('calc-completion-date').innerText = remaining > 0 ? completionDate.toISOString().split('T')[0] : "Completed!";
+
+      let percent = totalObligation > 0 ? ((totalCompleted / totalObligation) * 100).toFixed(1) : 0;
+      document.getElementById('calc-percent').innerText = `${percent}%`;
+      document.getElementById('ring-percent-text').innerText = `${percent}%`;
+      document.getElementById('calc-progress-bar').style.width = `${percent}%`;
+
+      const circle = document.getElementById('ring-progress-circle');
+      const circumference = 2 * Math.PI * 40; // r=40
+      const offset = circumference - (percent / 100) * circumference;
+      circle.style.strokeDasharray = `${circumference}`;
+      circle.style.strokeDashoffset = `${offset}`;
+    }
+
+    function calculateCustomGoal() {
+      const targetStr = document.getElementById('target-date-input').value;
+      if (!targetStr) return;
+
+      const targetDate = new Date(targetStr);
+      const now = new Date();
+      const daysLeft = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
+
+      if (daysLeft <= 0) {
+        document.getElementById('custom-goal-result').innerText = "Target date must be in the future!";
+        document.getElementById('apply-pace-btn').classList.add('hidden');
+        return;
+      }
+
+      const remText = document.getElementById('calc-remaining').innerText.replace(/,/g, '');
+      const remaining = parseInt(remText) || 0;
+
+      const reqPace = Math.ceil(remaining / daysLeft);
+      document.getElementById('custom-goal-result').innerText = `${reqPace} prayers / day over ${daysLeft} days`;
+      document.getElementById('apply-pace-btn').classList.remove('hidden');
+    }
+
+    function applyCustomGoalPace() {
+      showMascotSpeech("Target pace noted! Keep up this daily goal! 🎯");
+    }
+
+    // --- COSMETICS & THEMES ---
+    function changeTheme(themeVal) {
+      document.body.setAttribute('data-theme', themeVal);
+    }
+
+    function updateBadges() {
+      let totalCompleted = 0;
+      dailyLogs.forEach(l => {
+        Object.values(l.logged).forEach(v => { if (v) totalCompleted++; });
+      });
+
+      if (totalCompleted >= 1) {
+        document.getElementById('badge-1').classList.remove('opacity-40');
+        document.getElementById('badge-1').classList.add('border-emerald-500', 'bg-emerald-500/10');
+      }
+      if (currentUser.streak >= 3) {
+        document.getElementById('badge-2').classList.remove('opacity-40');
+        document.getElementById('badge-2').classList.add('border-orange-500', 'bg-orange-500/10');
+      }
+      if (totalCompleted >= 100) {
+        document.getElementById('badge-3').classList.remove('opacity-40');
+        document.getElementById('badge-3').classList.add('border-yellow-500', 'bg-yellow-500/10');
+      }
+
+      if (currentUser.xp >= 100) {
+        document.getElementById('badge-theme-1').classList.remove('opacity-40');
+        document.getElementById('opt-andalusian').disabled = false;
+        document.getElementById('opt-andalusian').innerText = "🌊 Andalusian Midnight (Unlocked)";
+      }
+
+      if (currentUser.streak >= 30) {
+        document.getElementById('badge-theme-2').classList.remove('opacity-40');
+        document.getElementById('opt-alaqsa').disabled = false;
+        document.getElementById('opt-alaqsa').innerText = "🌅 Al-Aqsa Dawn (Unlocked)";
       }
     }
 
-    // DATA BACKUP EXPORT & IMPORT ENGINE
+    // --- HEATMAP ---
+    function renderHeatmap() {
+      const container = document.getElementById('heatmap-grid-container');
+      container.innerHTML = '';
+
+      for (let i = 29; i >= 0; i--) {
+        let d = new Date();
+        d.setDate(d.getDate() - i);
+        let dStr = d.toISOString().split('T')[0];
+
+        let log = dailyLogs.find(l => l.date === dStr);
+        let count = 0;
+        if (log) {
+          Object.values(log.logged).forEach(v => { if (v) count++; });
+        }
+
+        let cell = document.createElement('div');
+        cell.className = "heatmap-cell cursor-pointer";
+        cell.title = `${dStr}: ${count}/6 Prayers Logged`;
+
+        if (count === 0) cell.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+        else if (count <= 2) cell.style.backgroundColor = '#065f46';
+        else if (count <= 4) cell.style.backgroundColor = '#059669';
+        else cell.style.backgroundColor = '#10b981';
+
+        container.appendChild(cell);
+      }
+    }
+
+    // --- LEADERBOARD ---
+    function fetchLeaderboard() {
+      let users = [...fictionalCommunityMembers];
+      
+      if (currentUser.email !== "guest@tadarak.org") {
+        let existingIdx = users.findIndex(u => u.email === currentUser.email);
+        if (existingIdx >= 0) users[existingIdx] = currentUser;
+        else users.push(currentUser);
+      } else {
+        users.push(currentUser);
+      }
+
+      users.sort((a, b) => b.xp - a.xp);
+
+      const tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = '';
+
+      users.forEach((u, idx) => {
+        const isUser = u.email === currentUser.email;
+        if (isUser) {
+          document.getElementById('user-rank').innerText = `#${idx + 1}`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = isUser ? "bg-emerald-500/10 font-bold border-l-4 border-emerald-500" : "hover:bg-gray-800/30";
+        tr.innerHTML = `
+          <td class="p-4">#${idx + 1}</td>
+          <td class="p-4 flex items-center space-x-2">
+            <span>${u.fullName || u.name}</span>
+            ${isUser ? '<span class="text-[10px] bg-emerald-500 text-black px-1.5 py-0.5 rounded font-extrabold">YOU</span>' : ''}
+          </td>
+          <td class="p-4 text-emerald-400">${u.xp} XP</td>
+          <td class="p-4"><i class="fa-solid fa-fire text-orange-400 mr-1"></i>${u.streak} Days</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- EXPORT & IMPORT DATA BACKUP ---
     function exportDataJSON() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-        user: currentUser,
-        logs: dailyLogs,
-        exportedAt: new Date().toISOString()
-      }));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ user: currentUser, logs: dailyLogs }));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
       downloadAnchor.setAttribute("download", `Tadarak_Backup_${todayStr}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      showMascotSpeech("Backup file downloaded safely! 💾");
     }
 
     function exportDataCSV() {
       let csvContent = "data:text/csv;charset=utf-8,Date,Fajr,Dhuhr,Asr,Maghrib,Isha,Witr\n";
       dailyLogs.forEach(l => {
-        const row = [l.date, l.logged.Fajr, l.logged.Dhuhr, l.logged.Asr, l.logged.Maghrib, l.logged.Isha, l.logged.Witr].join(",");
-        csvContent += row + "\n";
+        csvContent += `${l.date},${l.logged.Fajr},${l.logged.Dhuhr},${l.logged.Asr},${l.logged.Maghrib},${l.logged.Isha},${l.logged.Witr}\n`;
       });
       const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", `Tadarak_Logs_${todayStr}.csv`);
       document.body.appendChild(link);
@@ -1011,187 +1221,75 @@
       link.remove();
     }
 
-    function importDataJSON(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
+    function importDataJSON(e) {
+      const fileReader = new FileReader();
+      fileReader.onload = function (event) {
         try {
-          const parsed = JSON.parse(e.target.result);
+          const parsed = JSON.parse(event.target.result);
           if (parsed.logs) dailyLogs = parsed.logs;
           if (parsed.user) currentUser = parsed.user;
-          
-          localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
-          localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-          
-          init();
-          showMascotSpeech("Data successfully restored from backup! 🎉");
+          saveData();
+          initApp();
+          showMascotSpeech("Backup restored successfully! 📁");
         } catch (err) {
-          alert("Invalid JSON backup file format.");
+          alert("Invalid JSON file format!");
         }
       };
-      reader.readAsText(file);
+      fileReader.readAsText(e.target.files[0]);
     }
 
-    // FIREBASE SYNC & LEADERBOARD
-    function syncUserToFirestore() {
-      if (!currentUser || !currentUser.email) return;
-      const userRef = db.collection('users').doc(currentUser.email.replace(/\./g, '_'));
-      
-      userRef.set({
-        name: currentUser.name,
-        email: currentUser.email,
-        dob: currentUser.dob,
-        xp: currentUser.xp || 0,
-        streak: currentUser.streak || 1,
-        freezes: currentUser.freezes || 2,
-        lastActive: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    }
-
-    function listenToGlobalLeaderboard() {
-      db.collection('users').orderBy('xp', 'desc').limit(20).onSnapshot(snapshot => {
-        globalUsers = [];
-        snapshot.forEach(doc => globalUsers.push(doc.data()));
-        
-        fictionalCommunityMembers.forEach(mem => {
-          if (!globalUsers.some(u => u.email === mem.email)) globalUsers.push(mem);
-        });
-
-        globalUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
-        renderLeaderboard();
-      }, err => {
-        globalUsers = fictionalCommunityMembers;
-        renderLeaderboard();
-      });
-    }
-
-    function renderLeaderboard() {
-      const body = document.getElementById('leaderboard-body');
-      body.innerHTML = '';
-
-      globalUsers.forEach((u, idx) => {
-        const isMe = currentUser && currentUser.email === u.email;
-        if (isMe) document.getElementById('user-rank').innerText = `#${idx + 1}`;
-
-        const tr = document.createElement('tr');
-        tr.className = isMe ? 'bg-emerald-500/10 font-bold text-emerald-400' : 'hover:bg-gray-800/40';
-        tr.innerHTML = `
-          <td class="p-4">${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</td>
-          <td class="p-4">${u.name} ${isMe ? '(You)' : ''}</td>
-          <td class="p-4 text-emerald-400 font-bold">${u.xp || 0} XP</td>
-          <td class="p-4">${u.streak || 0} Days 🔥</td>
-        `;
-        body.appendChild(tr);
-      });
-    }
-
-    // MASCOT INTERACTION
-    function showMascotSpeech(msg) {
-      const bubble = document.getElementById('mascot-speech');
-      document.getElementById('mascot-msg').innerText = msg;
-      bubble.classList.remove('opacity-0', 'translate-y-2');
-      setTimeout(() => bubble.classList.add('opacity-0', 'translate-y-2'), 4000);
-    }
-
-    function triggerMascotClick() {
-      showMascotSpeech("Keep going! Every logged prayer brings you closer to your goal! 🕌");
-      if (audioEnabled) playAudioTone(523.25, 'sine', 0.1);
-    }
-
-    function updateMascotMood() {
-      const tears = document.getElementById('mascot-tears');
-      if (currentUser && (currentUser.streak || 0) === 0) {
-        tears.classList.remove('hidden');
-      } else {
-        tears.classList.add('hidden');
-      }
-    }
-
-    // AUTH MODAL LOGIC
-    function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-modal').classList.add('flex'); }
-    function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('auth-modal').classList.remove('flex'); }
-
-    function handleAuthSubmit(e) {
-      e.preventDefault();
-      currentUser = {
-        name: document.getElementById('auth-name').value,
-        email: document.getElementById('auth-email').value,
-        dob: document.getElementById('auth-dob').value,
-        xp: currentUser ? currentUser.xp : 0,
-        streak: currentUser ? currentUser.streak : 1,
-        freezes: 2
-      };
-      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      renderAuthHeader();
-      populateUserData();
-      syncUserToFirestore();
-      closeAuthModal();
-      showMascotSpeech(`Welcome back, ${currentUser.name}! Let's do this! 🦅`);
-    }
-
-    function logout() {
-      localStorage.removeItem('tadarak_session');
-      currentUser = null;
-      location.reload();
-    }
-
-    // CERTIFICATE PDF GENERATION
+    // --- PDF CERTIFICATE GENERATION ---
     function generatePDF() {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('landscape');
+      const doc = new jsPDF();
       
+      const certDate = document.getElementById('cert-date').value || todayStr;
+
       doc.setFillColor(11, 15, 25);
-      doc.rect(0, 0, 297, 210, 'F');
-      
-      doc.setLineWidth(2);
+      doc.rect(0, 0, 210, 297, 'F');
+
       doc.setDrawColor(16, 185, 129);
-      doc.rect(10, 10, 277, 190);
+      doc.setLineWidth(2);
+      doc.rect(10, 10, 190, 277);
 
       doc.setTextColor(16, 185, 129);
-      doc.setFontSize(28);
-      doc.text("TADARAK QADHA AUDIT CERTIFICATE", 148, 45, { align: "center" });
+      doc.setFontSize(24);
+      doc.text("TADARAK QADHA AUDIT CERTIFICATE", 105, 40, null, null, 'center');
 
-      doc.setTextColor(243, 244, 246);
+      doc.setTextColor(255, 255, 255);
       doc.setFontSize(14);
-      doc.text(`This is to certify that ${currentUser ? currentUser.name : 'Valued User'}`, 148, 75, { align: "center" });
-      doc.text(`has logged a total verified performance of:`, 148, 90, { align: "center" });
-
-      doc.setFontSize(22);
-      doc.setTextColor(234, 179, 8);
-      doc.text(`${currentUser ? currentUser.xp || 0 : 0} Total XP  |  ${currentUser ? Math.floor((currentUser.xp||0)/10) : 0} Qadha Prayers Completed`, 148, 115, { align: "center" });
+      doc.text(`Issued To: ${currentUser.fullName}`, 105, 60, null, null, 'center');
 
       doc.setFontSize(10);
-      doc.setTextColor(156, 163, 175);
-      doc.text(`Report Date: ${document.getElementById('cert-date').value}`, 148, 140, { align: "center" });
+      doc.setTextColor(200, 200, 200);
+      doc.text(`Official Audit Record - Issued on ${certDate}`, 105, 70, null, null, 'center');
 
+      let totalCompleted = 0;
+      dailyLogs.forEach(l => {
+        Object.values(l.logged).forEach(v => { if (v) totalCompleted++; });
+      });
+
+      doc.setFontSize(12);
+      doc.text(`Total Qadha Prayers Completed: ${totalCompleted}`, 30, 100);
+      doc.text(`Total Earned Experience: ${currentUser.xp} XP`, 30, 115);
+      doc.text(`Active Consistency Streak: ${currentUser.streak} Days`, 30, 130);
+
+      doc.setLineWidth(0.5);
       doc.setDrawColor(255, 255, 255);
-      doc.line(180, 170, 250, 170);
-      doc.text("Zohaib Qaiser, Founder & CEO", 215, 177, { align: "center" });
+      doc.line(30, 200, 90, 200);
+      doc.text("Zohaib Qaiser", 30, 208);
+      doc.setFontSize(8);
+      doc.text("Founder & CEO, Tadarak", 30, 214);
 
-      doc.save(`Tadarak_Certificate_${currentUser ? currentUser.name : 'Report'}.pdf`);
+      doc.save(`Tadarak_Audit_Certificate_${currentUser.fullName}.pdf`);
+      showMascotSpeech("Certificate generated and downloaded! 📜");
     }
 
-    // PWA & PUSH NOTIFICATIONS
-    function registerServiceWorker() {
-      if ('serviceWorker' in navigator) {
-        const swCode = `
-          self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
-          self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-        `;
-        const blob = new Blob([swCode], { type: 'application/javascript' });
-        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-      }
-    }
-
-    function requestNotificationPermission() {
-      if ('Notification' in window && Notification.permission === 'default') {
-        setTimeout(() => {
-          Notification.requestPermission();
-        }, 5000);
-      }
-    }
+    // Run on window initial load
+    window.onload = function() {
+      document.getElementById('cert-date').value = todayStr;
+      initApp();
+    };
   </script>
 </body>
 </html>
