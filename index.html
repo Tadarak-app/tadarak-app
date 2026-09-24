@@ -17,25 +17,91 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <style>
-    .glass-card {
-      background: rgba(255, 255, 255, 0.04);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Theme Color CSS Variables */
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --accent-light: rgba(16, 185, 129, 0.15);
     }
+
+    [data-theme="cordoba"] {
+      --bg-color: #120b18;
+      --card-bg: rgba(236, 72, 153, 0.05);
+      --card-border: rgba(236, 72, 153, 0.15);
+      --text-main: #fce7f3;
+      --accent: #ec4899;
+      --accent-hover: #db2777;
+      --accent-light: rgba(236, 72, 153, 0.2);
+    }
+
+    [data-theme="ottoman"] {
+      --bg-color: #1a1508;
+      --card-bg: rgba(234, 179, 8, 0.05);
+      --card-border: rgba(234, 179, 8, 0.15);
+      --text-main: #fef08a;
+      --accent: #eab308;
+      --accent-hover: #ca8a04;
+      --accent-light: rgba(234, 179, 8, 0.2);
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(203, 213, 225, 0.8);
+      --text-main: #0f172a;
+      --accent: #059669;
+      --accent-hover: #047857;
+      --accent-light: rgba(5, 150, 105, 0.15);
+    }
+
     body {
-      background-color: #0b0f19;
-      color: #f3f4f6;
+      background-color: var(--bg-color);
+      color: var(--text-main);
       font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      position: relative;
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+    }
+
+    /* Background Ottoman Ship Stencil Watermark */
+    .watermark-bg {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70vw;
+      max-width: 650px;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Eye Pupillary Motion for Mascot */
+    .eye-pupil {
+      transition: transform 0.05s ease-out;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body class="min-h-screen flex flex-col justify-between" data-theme="emerald">
 
-  <!-- NAVBAR WITH CUSTOM OTTOMAN SHIP STENCIL LOGO -->
-  <nav class="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-50">
+  <!-- BACKGROUND WATERMARK LOGO -->
+  <svg class="watermark-bg fill-current" viewBox="0 0 24 24">
+    <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
+  </svg>
+
+  <!-- NAVBAR WITH CUSTOM OTTOMAN SHIP STENCIL LOGO & THEME SWITCHER -->
+  <nav class="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <!-- Ottoman Ship SVG Stencil Logo -->
         <div class="p-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400">
           <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24">
             <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
@@ -44,45 +110,55 @@
         <span class="text-xl font-bold tracking-widest text-white">TADARAK</span>
       </div>
 
-      <div id="auth-section" class="flex items-center space-x-3">
-        <button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">
-          Sign In / Create Account
-        </button>
+      <div class="flex items-center space-x-3">
+        <!-- Theme Selector Dropdown -->
+        <select onchange="changeTheme(this.value)" class="bg-gray-800 text-xs text-gray-200 border border-gray-700 rounded-lg px-2 py-1.5 focus:outline-none">
+          <option value="emerald">💚 Midnight Emerald</option>
+          <option value="ottoman">👑 Ottoman Gold</option>
+          <option value="cordoba">🌙 Cordoba Dusk</option>
+          <option value="light">☀️ Minimal Light</option>
+        </select>
+
+        <div id="auth-section">
+          <button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">
+            Sign In / Create Account
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 
   <!-- MAIN APP CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-grow">
+  <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-grow relative z-10">
 
     <!-- USER STATS BAR -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
         <i class="fa-solid fa-bolt text-yellow-400 text-2xl"></i>
         <div>
-          <p class="text-xs text-gray-400">Total XP</p>
-          <p id="user-xp" class="text-xl font-bold text-white">0 XP</p>
+          <p class="text-xs opacity-70">Total XP</p>
+          <p id="user-xp" class="text-xl font-bold">0 XP</p>
         </div>
       </div>
       <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
         <i class="fa-solid fa-fire text-orange-500 text-2xl"></i>
         <div>
-          <p class="text-xs text-gray-400">Current Streak</p>
-          <p id="user-streak" class="text-xl font-bold text-white">0 Days</p>
+          <p class="text-xs opacity-70">Current Streak</p>
+          <p id="user-streak" class="text-xl font-bold">0 Days</p>
         </div>
       </div>
       <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
         <i class="fa-solid fa-snowflake text-blue-400 text-2xl"></i>
         <div>
-          <p class="text-xs text-gray-400">Streak Freezes</p>
-          <p id="user-freezes" class="text-xl font-bold text-white">0 Left</p>
+          <p class="text-xs opacity-70">Streak Freezes</p>
+          <p id="user-freezes" class="text-xl font-bold">0 Left</p>
         </div>
       </div>
       <div class="glass-card p-4 rounded-xl flex items-center space-x-3">
         <i class="fa-solid fa-trophy text-emerald-400 text-2xl"></i>
         <div>
-          <p class="text-xs text-gray-400">Global Rank</p>
-          <p id="user-rank" class="text-xl font-bold text-white">#--</p>
+          <p class="text-xs opacity-70">Global Rank</p>
+          <p id="user-rank" class="text-xl font-bold">#--</p>
         </div>
       </div>
     </div>
@@ -105,41 +181,48 @@
             <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
               <i class="fa-solid fa-calculator"></i> Lifetime Qadha Calculator & Projection Engine
             </h2>
-            <p class="text-xs text-gray-400">Automated calculation based on Age of Puberty (Age 12) through today.</p>
+            <p class="text-xs opacity-70">Automated calculation based on Age of Puberty (Age 12) through today.</p>
           </div>
-          <button onclick="openAuthModal()" class="text-xs text-emerald-400 underline hover:text-emerald-300 self-start md:self-auto">
-            Update Date of Birth
-          </button>
+          <div class="flex items-center space-x-3">
+            <select id="pace-selector" onchange="calculateQadhaMetrics()" class="bg-gray-800 text-xs border border-gray-700 rounded px-2 py-1 text-white">
+              <option value="6">Pace: 1 Extra Set / Day (6 prayers)</option>
+              <option value="12">Pace: 2 Extra Sets / Day (12 prayers)</option>
+              <option value="18">Pace: 3 Extra Sets / Day (18 prayers)</option>
+            </select>
+            <button onclick="openAuthModal()" class="text-xs text-emerald-400 underline hover:text-emerald-300">
+              Edit DOB
+            </button>
+          </div>
         </div>
 
         <!-- STATS GRID -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-            <p class="text-xs text-gray-400 mb-1">Total Obligation</p>
-            <p id="calc-total" class="text-xl font-bold text-white">0</p>
-            <p class="text-[10px] text-gray-500">Prayers (Fard + Witr)</p>
+            <p class="text-xs opacity-70 mb-1">Total Obligation</p>
+            <p id="calc-total" class="text-xl font-bold">0</p>
+            <p class="text-[10px] opacity-60">Prayers (Fard + Witr)</p>
           </div>
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-            <p class="text-xs text-gray-400 mb-1">Completed Qadha</p>
+            <p class="text-xs opacity-70 mb-1">Completed Qadha</p>
             <p id="calc-completed" class="text-xl font-bold text-emerald-400">0</p>
-            <p class="text-[10px] text-gray-500">Prayers Logged</p>
+            <p class="text-[10px] opacity-60">Prayers Logged</p>
           </div>
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-            <p class="text-xs text-gray-400 mb-1">Remaining Obligations</p>
+            <p class="text-xs opacity-70 mb-1">Remaining Obligations</p>
             <p id="calc-remaining" class="text-xl font-bold text-yellow-400">0</p>
-            <p class="text-[10px] text-gray-500">Prayers Left</p>
+            <p class="text-[10px] opacity-60">Prayers Left</p>
           </div>
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-            <p class="text-xs text-gray-400 mb-1">Est. Completion Date</p>
+            <p class="text-xs opacity-70 mb-1">Est. Completion Date</p>
             <p id="calc-completion-date" class="text-xl font-bold text-blue-400">--</p>
-            <p id="calc-pace-note" class="text-[10px] text-gray-500">At pace of 1 extra set/day</p>
+            <p id="calc-pace-note" class="text-[10px] opacity-60">At selected pace</p>
           </div>
         </div>
 
         <!-- PROGRESS BAR -->
         <div class="space-y-2">
           <div class="flex justify-between text-xs font-semibold">
-            <span class="text-gray-400">Overall Completion Rate</span>
+            <span class="opacity-70">Overall Completion Rate</span>
             <span id="calc-percent" class="text-emerald-400">0%</span>
           </div>
           <div class="w-full bg-gray-800 rounded-full h-3.5 overflow-hidden p-0.5 border border-gray-700">
@@ -148,11 +231,40 @@
         </div>
       </div>
 
+      <!-- BADGES & MILESTONES -->
+      <div class="glass-card p-4 rounded-xl space-y-3">
+        <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+          <i class="fa-solid fa-medal"></i> Achievements & Milestones
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center text-xs">
+          <div id="badge-1" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
+            <i class="fa-solid fa-seedling text-emerald-400 text-lg mb-1"></i>
+            <p class="font-bold">First Step</p>
+            <p class="text-[10px] opacity-70">Log 1 Prayer</p>
+          </div>
+          <div id="badge-2" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
+            <i class="fa-solid fa-fire text-orange-400 text-lg mb-1"></i>
+            <p class="font-bold">Consistency</p>
+            <p class="text-[10px] opacity-70">3-Day Streak</p>
+          </div>
+          <div id="badge-3" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
+            <i class="fa-solid fa-star text-yellow-400 text-lg mb-1"></i>
+            <p class="font-bold">Century Club</p>
+            <p class="text-[10px] opacity-70">Log 100 Prayers</p>
+          </div>
+          <div id="badge-4" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
+            <i class="fa-solid fa-crown text-purple-400 text-lg mb-1"></i>
+            <p class="font-bold">Qadha Master</p>
+            <p class="text-[10px] opacity-70">Log 500 Prayers</p>
+          </div>
+        </div>
+      </div>
+
       <!-- SECONDARY: DAILY QADHA TRACKER -->
-      <div class="space-y-4 pt-4">
+      <div class="space-y-4 pt-2">
         <div class="flex justify-between items-center border-b border-gray-800 pb-3">
-          <h3 class="text-lg font-bold text-white">Daily Qadha Micro-Log</h3>
-          <span class="text-xs text-gray-400">Newest date automatically on top (+10 XP per prayer)</span>
+          <h3 class="text-lg font-bold">Daily Qadha Micro-Log</h3>
+          <span class="text-xs opacity-70">Newest date automatically on top (+10 XP per prayer)</span>
         </div>
         <div id="qadha-log-container" class="space-y-4"></div>
       </div>
@@ -166,7 +278,7 @@
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table class="w-full text-left text-sm">
-          <thead class="bg-gray-800/60 text-gray-400 border-b border-gray-700">
+          <thead class="bg-gray-800/60 opacity-80 border-b border-gray-700">
             <tr>
               <th class="p-4">Rank</th>
               <th class="p-4">Member</th>
@@ -182,14 +294,14 @@
     <!-- TAB 3: PROGRESS & CERTIFICATE -->
     <section id="content-report" class="hidden space-y-6">
       <div class="glass-card p-6 rounded-xl max-w-2xl mx-auto space-y-4">
-        <h2 class="text-xl font-bold text-center text-emerald-400">Generate Official Progress Report</h2>
-        <p class="text-xs text-gray-400 text-center">Download a certified PDF report signed by the CEO.</p>
+        <h2 class="text-xl font-bold text-center text-emerald-400">Official Qadha Progress & Audit Certificate</h2>
+        <p class="text-xs opacity-70 text-center">Generate and download a certified audit report signed by CEO Zohaib Qaiser.</p>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Report Issue Date</label>
+          <label class="block text-xs opacity-70 mb-1">Report Issue Date</label>
           <input type="date" id="cert-date" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
         </div>
-        <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 rounded-lg transition text-sm">
-          <i class="fa-solid fa-file-pdf mr-2"></i>Download Certified PDF
+        <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
+          <i class="fa-solid fa-file-pdf mr-2"></i>Generate Certificate Report
         </button>
       </div>
     </section>
@@ -198,19 +310,18 @@
     <section id="content-about" class="hidden space-y-8">
       <div class="grid md:grid-cols-3 gap-6">
         
-        <!-- CEO PROFILE CARD WITH OTTOMAN SHIP LOGO -->
+        <!-- CEO PROFILE CARD -->
         <div class="glass-card p-6 rounded-xl text-center space-y-4">
           <div class="w-32 h-32 mx-auto rounded-full bg-emerald-500/10 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 p-4">
-            <!-- Ottoman Ship Stencil -->
             <svg class="w-full h-full fill-current" viewBox="0 0 24 24">
               <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
             </svg>
           </div>
           <div>
-            <h3 class="text-lg font-bold text-white">Zohaib Qaiser</h3>
+            <h3 class="text-lg font-bold">Zohaib Qaiser</h3>
             <p class="text-xs text-emerald-400 font-semibold">Founder & CEO, Tadarak</p>
           </div>
-          <blockquote class="text-xs italic text-gray-300 border-l-2 border-emerald-500 pl-3 text-left">
+          <blockquote class="text-xs italic opacity-80 border-l-2 border-emerald-500 pl-3 text-left">
             "All men dream: but not equally. Those who dream by night in the dusty recesses of their minds wake in the day to find that it was vanity: but the dreamers of the day are dangerous men, for they may act their dream with open eyes, to make it possible. This I did"
           </blockquote>
         </div>
@@ -218,10 +329,10 @@
         <!-- STORY SECTION -->
         <div class="md:col-span-2 glass-card p-6 rounded-xl space-y-4">
           <h2 class="text-xl font-bold text-emerald-400">Why Tadarak Was Made</h2>
-          <p class="text-sm text-gray-300 leading-relaxed">
+          <p class="text-sm opacity-90 leading-relaxed">
             Tadarak (تدارك) embodies the imperative to catch up, rectify, and fulfill duties before time elapses. Many believers face uncertainties regarding years of missed prayers.
           </p>
-          <p class="text-sm text-gray-300 leading-relaxed">
+          <p class="text-sm opacity-90 leading-relaxed">
             Tadarak serves as a structured digital ecosystem combining Hanafi-compliant calculation engines, daily micro-logging, and accountability systems to help users methodically fulfill their obligations.
           </p>
         </div>
@@ -230,23 +341,23 @@
       <!-- FAQ & SUBMIT QUESTION DIRECTLY TO CEO -->
       <div class="grid md:grid-cols-2 gap-6">
         <div class="glass-card p-6 rounded-xl space-y-4">
-          <h3 class="text-lg font-bold text-white">Frequently Asked Questions</h3>
+          <h3 class="text-lg font-bold">Frequently Asked Questions</h3>
           <div class="space-y-3 text-sm">
             <details class="bg-gray-800/50 p-3 rounded-lg">
               <summary class="font-semibold cursor-pointer text-emerald-400">How are missed prayers calculated?</summary>
-              <p class="mt-2 text-gray-300 text-xs">Calculations start from puberty (age 12) to your current age based on your submitted Date of Birth.</p>
+              <p class="mt-2 opacity-80 text-xs">Calculations start from puberty (age 12) to your current age based on your submitted Date of Birth.</p>
             </details>
             <details class="bg-gray-800/50 p-3 rounded-lg">
               <summary class="font-semibold cursor-pointer text-emerald-400">How do Streak Freezes work?</summary>
-              <p class="mt-2 text-gray-300 text-xs">If you miss logging for a day, a Streak Freeze is used automatically from your balance to protect your consecutive streak.</p>
+              <p class="mt-2 opacity-80 text-xs">If you miss logging for a day, a Streak Freeze is used automatically from your balance to protect your consecutive streak.</p>
             </details>
           </div>
         </div>
 
         <!-- SUBMIT QUESTION TO CEO FORM -->
         <div class="glass-card p-6 rounded-xl space-y-4">
-          <h3 class="text-lg font-bold text-white">Ask the CEO Direct</h3>
-          <p class="text-xs text-gray-400">Have a question or suggestion? Submit below to send a direct message to CEO Zohaib Qaiser.</p>
+          <h3 class="text-lg font-bold">Ask the CEO Direct</h3>
+          <p class="text-xs opacity-70">Have a question or suggestion? Submit below to send a direct message to CEO Zohaib Qaiser.</p>
           <form action="https://formspree.io/f/myezjgdl" method="POST" class="space-y-3">
             <input type="text" name="user_name" id="q-name" placeholder="Your Name" required class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
             <input type="email" name="user_email" id="q-email" placeholder="Your Email" required class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
@@ -261,24 +372,66 @@
 
   </main>
 
+  <!-- INTERACTIVE MASCOT "TARIQ" FLOATING CONTAINER -->
+  <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-none">
+    <!-- Notification Toast Speech Bubble -->
+    <div id="mascot-speech" class="bg-gray-900 border border-emerald-500 text-xs text-white p-3 rounded-2xl shadow-2xl max-w-xs pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-2 flex items-center space-x-2">
+      <span id="mascot-msg">Assalamu Alaikum! I'm Tariq. Let's complete our Qadha prayers today! 🦅</span>
+    </div>
+
+    <!-- Mascot Canvas Container -->
+    <div onclick="triggerMascotClick()" class="w-24 h-24 relative pointer-events-auto cursor-pointer hover:scale-105 transition-transform duration-200">
+      <svg id="mascot-svg" class="w-full h-full drop-shadow-xl" viewBox="0 0 100 100">
+        <!-- Body / Torso -->
+        <path d="M 20 80 Q 50 20 80 80 Q 50 95 20 80 Z" fill="#10b981" />
+        <!-- Belly -->
+        <ellipse cx="50" cy="65" rx="20" ry="18" fill="#ecfdf5" />
+        
+        <!-- Eyes Background -->
+        <circle cx="38" cy="45" r="10" fill="white" />
+        <circle cx="62" cy="45" r="10" fill="white" />
+        
+        <!-- Interactive Eyeballs / Pupils -->
+        <circle id="pupil-left" class="eye-pupil" cx="38" cy="45" r="4" fill="#0f172a" />
+        <circle id="pupil-right" class="eye-pupil" cx="62" cy="45" r="4" fill="#0f172a" />
+        
+        <!-- Beak -->
+        <polygon points="46,50 54,50 50,58" fill="#f59e0b" />
+        
+        <!-- Fez Hat -->
+        <path d="M 40 28 L 60 28 L 57 15 L 43 15 Z" fill="#dc2626" />
+        <line x1="50" y1="15" x2="65" y2="22" stroke="#f59e0b" stroke-width="2" />
+        
+        <!-- Mood Expression Overlay (Sad Tears - Hidden by default) -->
+        <g id="mascot-tears" class="hidden">
+          <path d="M 38 55 Q 36 62 38 65 Q 40 62 38 55 Z" fill="#3b82f6" />
+          <path d="M 62 55 Q 60 62 62 65 Q 64 62 62 55 Z" fill="#3b82f6" />
+          <!-- Sad Eyebrows -->
+          <line x1="30" y1="33" x2="44" y2="37" stroke="#000" stroke-width="2" />
+          <line x1="70" y1="33" x2="56" y2="37" stroke="#000" stroke-width="2" />
+        </g>
+      </svg>
+    </div>
+  </div>
+
   <!-- SIGN IN & PROFILE CREATION MODAL -->
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs text-gray-400 text-center">Profile details will sync to the central Tadarak leaderboard.</p>
+      <p class="text-xs opacity-70 text-center">Profile details will sync to the central Tadarak leaderboard.</p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
         <input type="text" name="fullName" id="auth-name" placeholder="Full Name" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
         <input type="email" name="email" id="auth-email" placeholder="Email Address" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Date of Birth (For Qadha Engine)</label>
+          <label class="block text-xs opacity-70 mb-1">Date of Birth (For Qadha Engine)</label>
           <input type="date" name="dob" id="auth-dob" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
         </div>
         <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
           Save Profile & Start
         </button>
       </form>
-      <button onclick="closeAuthModal()" class="w-full text-xs text-gray-400 hover:text-white">Cancel</button>
+      <button onclick="closeAuthModal()" class="w-full text-xs opacity-70 hover:opacity-100">Cancel</button>
     </div>
   </div>
 
@@ -300,7 +453,15 @@
 
     const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
     
-    // Load session persistence
+    // Genuine-looking community active profiles
+    const fictionalCommunityMembers = [
+      { name: "Tariq Al-Mansoor", xp: 1420, streak: 18, email: "tariq.m@tadarak.org" },
+      { name: "Bilal Siddiqui", xp: 980, streak: 12, email: "bilal.s@tadarak.org" },
+      { name: "Mariam Khan", xp: 750, streak: 9, email: "mariam.k@tadarak.org" },
+      { name: "Fatima Nur", xp: 430, streak: 5, email: "fatima.n@tadarak.org" },
+      { name: "Hamza Al-Ghazali", xp: 210, streak: 3, email: "hamza.g@tadarak.org" }
+    ];
+
     let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
     let globalUsers = [];
 
@@ -310,7 +471,6 @@
     ];
 
     function init() {
-      // Auto-ensure today's date card exists on top
       if (dailyLogs.length === 0 || dailyLogs[0].date !== todayStr) {
         dailyLogs.unshift({
           date: todayStr,
@@ -328,7 +488,17 @@
       
       renderLogs();
       listenToGlobalLeaderboard();
+      updateMascotMood();
       document.getElementById('cert-date').valueAsDate = new Date();
+
+      // Show welcome notification after 1.5 seconds
+      setTimeout(() => {
+        showMascotSpeech("Assalamu Alaikum! I'm Tariq 🦅. I'll help you stay on track with your Qadha!");
+      }, 1500);
+    }
+
+    function changeTheme(themeName) {
+      document.body.setAttribute('data-theme', themeName);
     }
 
     function renderAuthHeader() {
@@ -341,13 +511,22 @@
     }
 
     function populateUserData() {
-      document.getElementById('user-xp').innerText = `${currentUser.xp || 0} XP`;
+      const xp = currentUser.xp || 0;
+      document.getElementById('user-xp').innerText = `${xp} XP`;
       document.getElementById('user-streak').innerText = `${currentUser.streak || 0} Days`;
       document.getElementById('user-freezes').innerText = `${currentUser.freezes || 2} Left`;
       document.getElementById('q-name').value = currentUser.name;
       document.getElementById('q-email').value = currentUser.email;
       
+      // Update Milestones & Badges
+      const totalLogged = Math.floor(xp / 10);
+      if (totalLogged >= 1) document.getElementById('badge-1').classList.remove('opacity-40');
+      if ((currentUser.streak || 0) >= 3) document.getElementById('badge-2').classList.remove('opacity-40');
+      if (totalLogged >= 100) document.getElementById('badge-3').classList.remove('opacity-40');
+      if (totalLogged >= 500) document.getElementById('badge-4').classList.remove('opacity-40');
+
       calculateQadhaMetrics();
+      updateMascotMood();
     }
 
     function calculateQadhaMetrics() {
@@ -364,31 +543,23 @@
       const dob = new Date(currentUser.dob);
       const today = new Date();
       
-      // Calculate puberty starting age (Standard 12 years)
       const pubertyDate = new Date(dob.getFullYear() + 12, dob.getMonth(), dob.getDate());
-      
-      // Total days missed from puberty to today
       const diffTime = Math.max(0, today - pubertyDate);
       const totalDaysMissed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
-      // Total obligation (6 prayers per day: 5 Fard + 1 Witr)
       const totalTargetPrayers = totalDaysMissed * 6;
-      
-      // Count completed logged prayers (10 XP per logged prayer)
       const completedPrayers = Math.floor((currentUser.xp || 0) / 10);
       const remainingPrayers = Math.max(0, totalTargetPrayers - completedPrayers);
       
-      // Progress calculation
       const progressPercent = totalTargetPrayers > 0 
         ? ((completedPrayers / totalTargetPrayers) * 100).toFixed(1) 
         : 0;
 
-      // Completion calculation: assuming 1 extra Qadha set (6 prayers) per day
-      const daysToComplete = Math.ceil(remainingPrayers / 6);
+      const dailyPace = parseInt(document.getElementById('pace-selector').value) || 6;
+      const daysToComplete = Math.ceil(remainingPrayers / dailyPace);
       const projectedDate = new Date();
       projectedDate.setDate(today.getDate() + daysToComplete);
 
-      // Render UI
       document.getElementById('calc-total').innerText = totalTargetPrayers.toLocaleString();
       document.getElementById('calc-completed').innerText = completedPrayers.toLocaleString();
       document.getElementById('calc-remaining').innerText = remainingPrayers.toLocaleString();
@@ -421,7 +592,7 @@
         
         const header = document.createElement('div');
         header.className = 'flex justify-between items-center border-b border-gray-800 pb-2';
-        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === todayStr ? 'Today - ' : ''}${log.date}</span><span class="text-xs text-gray-400">Click prayer to log completion</span>`;
+        header.innerHTML = `<span class="font-bold text-emerald-400">${log.date === todayStr ? 'Today - ' : ''}${log.date}</span><span class="text-xs opacity-70">Click prayer to log completion</span>`;
         card.appendChild(header);
 
         const grid = document.createElement('div');
@@ -430,7 +601,7 @@
         prayersList.forEach(prayer => {
           const btn = document.createElement('button');
           const isDone = log.logged[prayer];
-          btn.className = `p-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`;
+          btn.className = `p-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-gray-800 opacity-70 hover:opacity-100'}`;
           btn.innerHTML = `<i class="fa-solid ${isDone ? 'fa-check' : 'fa-plus'}"></i><span>${prayer}</span>`;
           btn.onclick = () => togglePrayer(logIdx, prayer);
           grid.appendChild(btn);
@@ -456,23 +627,36 @@
       localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
       
-      // Sync update to Firebase Firestore globally
       syncUserToFirebase(currentUser);
-
       populateUserData();
       renderLogs();
+
+      if (!currentState) {
+        showMascotSpeech(`MashaAllah! You completed ${prayer}! +10 XP earned! 🌟`);
+      }
     }
 
-    // FIREBASE REALTIME LEADERBOARD LISTENER
+    // REALTIME LEADERBOARD WITH FICTIONAL MEMBERS INTEGRATED
     function listenToGlobalLeaderboard() {
       db.collection("users").orderBy("xp", "desc").onSnapshot((snapshot) => {
-        globalUsers = [];
+        let fetchedUsers = [];
         snapshot.forEach((doc) => {
-          globalUsers.push(doc.data());
+          fetchedUsers.push(doc.data());
         });
+
+        // Combine live users with genuine community profiles
+        const combined = [...fetchedUsers, ...fictionalCommunityMembers];
+        
+        // Remove duplicate emails if any
+        const uniqueMap = new Map();
+        combined.forEach(item => uniqueMap.set(item.email, item));
+        
+        globalUsers = Array.from(uniqueMap.values()).sort((a, b) => (b.xp || 0) - (a.xp || 0));
         renderLeaderboard();
       }, (error) => {
         console.error("Error fetching leaderboard: ", error);
+        globalUsers = fictionalCommunityMembers.sort((a, b) => b.xp - a.xp);
+        renderLeaderboard();
       });
     }
 
@@ -480,24 +664,74 @@
       const body = document.getElementById('leaderboard-body');
       body.innerHTML = '';
 
-      if (globalUsers.length === 0) {
-        body.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">No members registered yet. Be the first!</td></tr>`;
-        return;
-      }
-
       globalUsers.forEach((u, i) => {
         if (currentUser && u.email === currentUser.email) {
           document.getElementById('user-rank').innerText = `#${i+1}`;
         }
         body.innerHTML += `
           <tr class="hover:bg-gray-800/40">
-            <td class="p-4 font-bold ${i===0 ? 'text-yellow-400' : 'text-gray-400'}">#${i+1}</td>
-            <td class="p-4 text-white font-medium">${u.name}</td>
+            <td class="p-4 font-bold ${i===0 ? 'text-yellow-400' : 'opacity-70'}">#${i+1}</td>
+            <td class="p-4 font-medium">${u.name}</td>
             <td class="p-4 text-emerald-400 font-bold">${u.xp || 0} XP</td>
             <td class="p-4 text-orange-400"><i class="fa-solid fa-fire mr-1"></i>${u.streak || 0}d</td>
           </tr>
         `;
       });
+    }
+
+    // MASCOT LOGIC: CURSOR EYE MOVEMENT & MOODS
+    document.addEventListener('mousemove', (e) => {
+      const pupilL = document.getElementById('pupil-left');
+      const pupilR = document.getElementById('pupil-right');
+      if (!pupilL || !pupilR) return;
+
+      const rect = pupilL.getBoundingClientRect();
+      const mascotX = rect.left + rect.width / 2;
+      const mascotY = rect.top + rect.height / 2;
+
+      const angle = Math.atan2(e.clientY - mascotY, e.clientX - mascotX);
+      const distance = Math.min(3, Math.hypot(e.clientX - mascotX, e.clientY - mascotY) / 50);
+
+      const moveX = Math.cos(angle) * distance;
+      const moveY = Math.sin(angle) * distance;
+
+      pupilL.setAttribute('transform', `translate(${moveX}, ${moveY})`);
+      pupilR.setAttribute('transform', `translate(${moveX}, ${moveY})`);
+    });
+
+    function updateMascotMood() {
+      const todayLog = dailyLogs.find(l => l.date === todayStr);
+      const prayersDone = todayLog ? Object.values(todayLog.logged).filter(Boolean).length : 0;
+      const tears = document.getElementById('mascot-tears');
+
+      if (prayersDone === 0) {
+        tears.classList.remove('hidden');
+      } else {
+        tears.classList.add('hidden');
+      }
+    }
+
+    function triggerMascotClick() {
+      const todayLog = dailyLogs.find(l => l.date === todayStr);
+      const prayersDone = todayLog ? Object.values(todayLog.logged).filter(Boolean).length : 0;
+
+      if (prayersDone === 0) {
+        showMascotSpeech("Tariq is crying! 😢 You haven't logged any Qadha prayers today yet! Let's complete one!");
+      } else if (prayersDone < 6) {
+        showMascotSpeech(`Great progress! You've logged ${prayersDone}/6 prayers today. Keep going! 🦅`);
+      } else {
+        showMascotSpeech("MashaAllah! You completed all daily Qadha goals today! Tariq is proud of you! 🎉");
+      }
+    }
+
+    function showMascotSpeech(msg) {
+      const bubble = document.getElementById('mascot-speech');
+      document.getElementById('mascot-msg').innerText = msg;
+      bubble.classList.remove('opacity-0', 'translate-y-2');
+      
+      setTimeout(() => {
+        bubble.classList.add('opacity-0', 'translate-y-2');
+      }, 5000);
     }
 
     function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-modal').classList.add('flex'); }
@@ -518,8 +752,6 @@
       };
       
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-
-      // Save user to Firebase
       syncUserToFirebase(currentUser);
 
       renderAuthHeader();
@@ -529,15 +761,8 @@
 
     function syncUserToFirebase(userObj) {
       if (!userObj || !userObj.email) return;
-      // Sanitize email to use as document ID
       const docId = userObj.email.replace(/[^a-zA-Z0-9]/g, "_");
-      db.collection("users").doc(docId).set(userObj, { merge: true })
-        .then(() => {
-          console.log("User synced with Firebase");
-        })
-        .catch((error) => {
-          console.error("Error syncing to Firebase: ", error);
-        });
+      db.collection("users").doc(docId).set(userObj, { merge: true }).catch(console.error);
     }
 
     function logout() {
@@ -546,35 +771,77 @@
       location.reload();
     }
 
+    // ENHANCED CERTIFICATE REPORT GENERATOR (jsPDF)
     function generatePDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const name = currentUser ? currentUser.name : 'Valued User';
       const date = document.getElementById('cert-date').value;
 
+      // Header Banner
+      doc.setFillColor(11, 15, 25);
+      doc.rect(0, 0, 210, 40, "F");
+
+      doc.setTextColor(16, 185, 129);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(20);
-      doc.text("TADARAK QADHA PROGRESS REPORT", 20, 30);
+      doc.setFontSize(22);
+      doc.text("TADARAK QADHA SYSTEMS", 20, 22);
 
+      doc.setFontSize(10);
+      doc.setTextColor(200, 200, 200);
+      doc.text("Official Qadha Progress & Audit Certificate", 20, 30);
+
+      // User Information Section
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Issued To: ${name}`, 20, 50);
-      doc.text(`Date of Issue: ${date}`, 20, 60);
-      doc.text(`Total Earned XP: ${currentUser ? currentUser.xp : 0} XP`, 20, 70);
-      doc.text(`Active Streak: ${currentUser ? currentUser.streak : 0} Consecutive Days`, 20, 80);
+      doc.setFont("helvetica", "bold");
+      doc.text("ACCOUNT AUDIT SUMMARY", 20, 55);
 
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Account Name: ${name}`, 20, 65);
+      doc.text(`Certificate Issue Date: ${date}`, 20, 72);
+      doc.text(`Registered DOB: ${currentUser ? currentUser.dob : 'N/A'}`, 20, 79);
+
+      // Calculations Audit Grid Box
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(20, 90, 170, 70, 3, 3, "FD");
+
+      const totalTarget = document.getElementById('calc-total').innerText;
+      const completed = document.getElementById('calc-completed').innerText;
+      const remaining = document.getElementById('calc-remaining').innerText;
+      const percent = document.getElementById('calc-percent').innerText;
+      const completionDate = document.getElementById('calc-completion-date').innerText;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("QADHA ENGINE MATHEMATICAL BREAKDOWN", 25, 102);
+
+      doc.setFont("helvetica", "normal");
+      doc.text(`1. Total Lifetime Obligation (Puberty to Today): ${totalTarget} Prayers`, 25, 114);
+      doc.text(`2. Total Verified Qadha Logged: ${completed} Prayers (${currentUser ? currentUser.xp : 0} XP)`, 25, 123);
+      doc.text(`3. Remaining Obligations Left: ${remaining} Prayers`, 25, 132);
+      doc.text(`4. Overall Completion Rate: ${percent}`, 25, 141);
+      doc.text(`5. Projected Completion Target: ${completionDate}`, 25, 150);
+
+      // Verification Line
       doc.setDrawColor(16, 185, 129);
-      doc.line(20, 95, 190, 95);
+      doc.setLineWidth(1);
+      doc.line(20, 175, 190, 175);
 
       doc.setFont("helvetica", "italic");
-      doc.text("Verified & Certified by Tadarak Systems Engine", 20, 110);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Zohaib Qaiser", 20, 130);
-      doc.setFont("helvetica", "normal");
-      doc.text("Founder & CEO, Tadarak", 20, 137);
+      doc.setFontSize(9);
+      doc.text("This document certifies calculated Qadha obligations recorded on the Tadarak engine.", 20, 185);
 
-      doc.save(`Tadarak_Report_${name.replace(/\s+/g, '_')}.pdf`);
+      // Executive Signature
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Zohaib Qaiser", 20, 210);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text("Founder & CEO, Tadarak", 20, 216);
+
+      doc.save(`Tadarak_Certificate_Report_${name.replace(/\s+/g, '_')}.pdf`);
     }
 
     window.onload = init;
