@@ -887,7 +887,7 @@
       document.getElementById('auth-modal').classList.remove('flex');
     }
 
-    async function handleAuthSubmit(e) {
+   async function handleAuthSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const formData = new FormData(form);
@@ -928,6 +928,11 @@
   showMascotSpeech(`Welcome, ${name}! Your profile is ready and synced! 🦅`);
 }
 
+function logout() {
+  localStorage.removeItem('tadarak_session');
+  currentUser = null;
+  initApp();
+}
     // --- DAILY QADHA LOGGING ---
     function renderDailyLogs() {
       const container = document.getElementById('qadha-log-container');
