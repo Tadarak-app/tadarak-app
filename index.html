@@ -887,38 +887,46 @@
       document.getElementById('auth-modal').classList.remove('flex');
     }
 
-    function handleAuthSubmit(e) {
-      e.preventDefault();
-      const name = document.getElementById('auth-name').value;
-      const email = document.getElementById('auth-email').value;
-      const dob = document.getElementById('auth-dob').value;
+    async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
 
-      currentUser.fullName = name;
-      currentUser.email = email;
-      currentUser.dob = dob;
+  const name = document.getElementById('auth-name').value;
+  const email = document.getElementById('auth-email').value;
+  const dob = document.getElementById('auth-dob').value;
 
-      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      closeAuthModal();
-      updateUserStatsUI();
-      calculateQadhaMetrics();
-      
-      // Sync user profile to Firestore
-      db.collection("users").doc(email).set({
-        fullName: name,
-        email: email,
-        xp: currentUser.xp,
-        streak: currentUser.streak,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+  currentUser.fullName = name;
+  currentUser.email = email;
+  currentUser.dob = dob;
 
-      showMascotSpeech(`Welcome, ${name}! Your profile is ready and synced! 🦅`);
-    }
+  localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+  closeAuthModal();
+  updateUserStatsUI();
+  calculateQadhaMetrics();
+  
+  // 1. Silent Formspree background submission
+  try {
+    await fetch(form.action, {
+      method: form.method,
+      body: formData,
+      headers: { 'Accept': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Formspree sync error:', error);
+  }
 
-    function logout() {
-      localStorage.removeItem('tadarak_session');
-      currentUser = null;
-      initApp();
-    }
+  // 2. Sync user profile to Firestore
+  db.collection("users").doc(email).set({
+    fullName: name,
+    email: email,
+    xp: currentUser.xp,
+    streak: currentUser.streak,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  showMascotSpeech(`Welcome, ${name}! Your profile is ready and synced! 🦅`);
+}
 
     // --- DAILY QADHA LOGGING ---
     function renderDailyLogs() {
