@@ -931,7 +931,7 @@
 function logout() {
   localStorage.removeItem('tadarak_session');
   currentUser = null;
-  initApp();
+  location.reload();
 }
     // --- DAILY QADHA LOGGING ---
     function renderDailyLogs() {
