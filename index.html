@@ -3,9 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tadarak | Qadha Prayer Tracker</title>
+  <title>Tadarak | Modern Qadha Prayer Tracker</title>
 
-  <!-- Custom Tadarak Favicon (Ottoman Ship Logo) -->
+  <!-- PWA Web App Manifest & Apple Web App Meta -->
+  <link rel="manifest" href="data:application/manifest+json,{
+    %22name%22:%22Tadarak%20Qadha%20Tracker%22,
+    %22short_name%22:%22Tadarak%22,
+    %22start_url%22:%22.%22,
+    %22display%22:%22standalone%22,
+    %22background_color%22:%22#0b0f19%22,
+    %22theme_color%22:%22#10b981%22,
+    %22icons%22:[{%22src%22:%22https://via.placeholder.com/192/10b981/ffffff?text=Tadarak%22,%22sizes%22:%22192x192%22,%22type%22:%22image/png%22}]
+  }">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#10b981">
+
+  <!-- Custom Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z'/></svg>">
 
   <!-- Tailwind CSS -->
@@ -51,6 +65,26 @@
       --accent-light: rgba(234, 179, 8, 0.2);
     }
 
+    [data-theme="andalusian-midnight"] {
+      --bg-color: #030712;
+      --card-bg: rgba(30, 58, 138, 0.2);
+      --card-border: rgba(59, 130, 246, 0.3);
+      --text-main: #e0f2fe;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --accent-light: rgba(56, 189, 248, 0.25);
+    }
+
+    [data-theme="alaqsa-dawn"] {
+      --bg-color: #111827;
+      --card-bg: rgba(245, 158, 11, 0.08);
+      --card-border: rgba(245, 158, 11, 0.25);
+      --text-main: #fffbeb;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --accent-light: rgba(245, 158, 11, 0.2);
+    }
+
     [data-theme="light"] {
       --bg-color: #f8fafc;
       --card-bg: rgba(255, 255, 255, 0.85);
@@ -75,7 +109,6 @@
       border: 1px solid var(--card-border);
     }
 
-    /* Background Ottoman Ship Stencil Watermark */
     .watermark-bg {
       position: fixed;
       top: 50%;
@@ -88,9 +121,26 @@
       z-index: 0;
     }
 
-    /* Eye Pupillary Motion for Mascot */
     .eye-pupil {
       transition: transform 0.05s ease-out;
+    }
+
+    /* Heatmap Grid Styles */
+    .heatmap-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      transition: transform 0.15s ease;
+    }
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+    }
+
+    /* Circular Progress Ring Styling */
+    .progress-ring__circle {
+      transition: stroke-dashoffset 0.35s ease-in-out;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
     }
   </style>
 </head>
@@ -101,7 +151,7 @@
     <path d="M12 2L13 4H18L16.5 7H13V11H20L18 14H13V18C16.5 18 19.5 19.5 21 21H3C4.5 19.5 7.5 18 11 18V14H6L4 11H11V7H7.5L6 4H11L12 2Z"/>
   </svg>
 
-  <!-- NAVBAR WITH CUSTOM OTTOMAN SHIP STENCIL LOGO & THEME SWITCHER -->
+  <!-- NAVBAR -->
   <nav class="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center space-x-3">
@@ -114,11 +164,19 @@
       </div>
 
       <div class="flex items-center space-x-3">
+        <!-- Audio Feedback Toggle Button -->
+        <button id="audio-toggle-btn" onclick="toggleAudioFeedback()" class="p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg hover:text-emerald-400 transition text-xs flex items-center gap-1.5" title="Toggle Sound Feedback">
+          <i id="audio-icon" class="fa-solid fa-volume-high"></i>
+          <span class="hidden sm:inline">Audio</span>
+        </button>
+
         <!-- Theme Selector Dropdown -->
-        <select onchange="changeTheme(this.value)" class="bg-gray-800 text-xs text-gray-200 border border-gray-700 rounded-lg px-2 py-1.5 focus:outline-none">
+        <select id="theme-selector" onchange="changeTheme(this.value)" class="bg-gray-800 text-xs text-gray-200 border border-gray-700 rounded-lg px-2 py-1.5 focus:outline-none">
           <option value="emerald">💚 Midnight Emerald</option>
           <option value="ottoman">👑 Ottoman Gold</option>
           <option value="cordoba">🌙 Cordoba Dusk</option>
+          <option value="andalusian-midnight" id="opt-andalusian" disabled>🔒 Andalusian Midnight (Tier 1 Unlocked)</option>
+          <option value="alaqsa-dawn" id="opt-alaqsa" disabled>🔒 Al-Aqsa Dawn (30-Day Streak Required)</option>
           <option value="light">☀️ Minimal Light</option>
         </select>
 
@@ -222,24 +280,61 @@
           </div>
         </div>
 
-        <!-- PROGRESS BAR -->
-        <div class="space-y-2">
-          <div class="flex justify-between text-xs font-semibold">
-            <span class="opacity-70">Overall Completion Rate</span>
-            <span id="calc-percent" class="text-emerald-400">0%</span>
+        <!-- NEW FEATURE: CUSTOM GOAL TARGET CALCULATOR -->
+        <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-800 space-y-3">
+          <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-bullseye"></i> Custom Deadline Target Calculator
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label class="text-[11px] opacity-70 block mb-1">Desired Completion Date</label>
+              <input type="date" id="target-date-input" onchange="calculateCustomGoal()" class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white">
+            </div>
+            <div class="col-span-2 bg-gray-800/60 p-2.5 rounded-lg border border-gray-700/50 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] opacity-60">Required Daily Pace</p>
+                <p id="custom-goal-result" class="text-xs font-bold text-emerald-400">Select a deadline above</p>
+              </div>
+              <button onclick="applyCustomGoalPace()" id="apply-pace-btn" class="hidden bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold px-3 py-1.5 rounded transition">
+                Set Pace
+              </button>
+            </div>
           </div>
-          <div class="w-full bg-gray-800 rounded-full h-3.5 overflow-hidden p-0.5 border border-gray-700">
-            <div id="calc-progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+
+        <!-- ANIMATED CIRCULAR PROGRESS RING & OVERALL BAR -->
+        <div class="flex flex-col md:flex-row items-center gap-6 pt-2">
+          <!-- Animated Circular Ring Indicator -->
+          <div class="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
+            <svg class="w-full h-full" viewBox="0 0 100 100">
+              <circle class="text-gray-800 stroke-current" stroke-width="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+              <circle id="ring-progress-circle" class="text-emerald-400 progress-ring__circle stroke-current" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="40" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span id="ring-percent-text" class="text-sm font-extrabold text-emerald-400">0%</span>
+              <span class="text-[9px] opacity-60 uppercase">Done</span>
+            </div>
+          </div>
+
+          <!-- Overall Progress Bar -->
+          <div class="w-full space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="opacity-70">Overall Completion Progress</span>
+              <span id="calc-percent" class="text-emerald-400">0%</span>
+            </div>
+            <div class="w-full bg-gray-800 rounded-full h-3.5 overflow-hidden p-0.5 border border-gray-700">
+              <div id="calc-progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- BADGES & MILESTONES -->
+      <!-- BADGES & UNLOCKABLE COSMETICS -->
       <div class="glass-card p-4 rounded-xl space-y-3">
         <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
-          <i class="fa-solid fa-medal"></i> Achievements & Milestones
+          <i class="fa-solid fa-medal"></i> Achievements, Milestones & Cosmetic Rewards
         </h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center text-xs">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-center text-xs">
           <div id="badge-1" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
             <i class="fa-solid fa-seedling text-emerald-400 text-lg mb-1"></i>
             <p class="font-bold">First Step</p>
@@ -255,19 +350,31 @@
             <p class="font-bold">Century Club</p>
             <p class="text-[10px] opacity-70">Log 100 Prayers</p>
           </div>
-          <div id="badge-4" class="p-3 bg-gray-800/40 rounded-lg border border-gray-700 opacity-40">
-            <i class="fa-solid fa-crown text-purple-400 text-lg mb-1"></i>
-            <p class="font-bold">Qadha Master</p>
-            <p class="text-[10px] opacity-70">Log 500 Prayers</p>
+          <div id="badge-theme-1" class="p-3 bg-gray-800/40 rounded-lg border border-blue-500/30 opacity-40">
+            <i class="fa-solid fa-palette text-sky-400 text-lg mb-1"></i>
+            <p class="font-bold">Andalusian Theme</p>
+            <p class="text-[10px] opacity-70">Earn Tier 1 XP (100 XP)</p>
+          </div>
+          <div id="badge-theme-2" class="p-3 bg-gray-800/40 rounded-lg border border-amber-500/30 opacity-40">
+            <i class="fa-solid fa-mosque text-amber-400 text-lg mb-1"></i>
+            <p class="font-bold">Al-Aqsa Theme</p>
+            <p class="text-[10px] opacity-70">Reach 30-Day Streak</p>
           </div>
         </div>
       </div>
 
-      <!-- SECONDARY: DAILY QADHA TRACKER -->
+      <!-- SECONDARY: DAILY QADHA TRACKER WITH QUICK LOG WHOLE DAY -->
       <div class="space-y-4 pt-2">
-        <div class="flex justify-between items-center border-b border-gray-800 pb-3">
-          <h3 class="text-lg font-bold">Daily Qadha Micro-Log</h3>
-          <span class="text-xs opacity-70">Newest date automatically on top (+10 XP per prayer)</span>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-3">
+          <div>
+            <h3 class="text-lg font-bold">Daily Qadha Micro-Log</h3>
+            <span class="text-xs opacity-70">Newest date automatically on top (+10 XP per prayer)</span>
+          </div>
+          
+          <!-- QUICK-LOG "LOG WHOLE DAY" BUTTON -->
+          <button onclick="logWholeDayQuick()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold text-xs px-4 py-2 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-bolt"></i> Log Whole Day (+6 Qadha)
+          </button>
         </div>
         <div id="qadha-log-container" class="space-y-4"></div>
       </div>
@@ -294,18 +401,58 @@
       </div>
     </section>
 
-    <!-- TAB 3: PROGRESS & CERTIFICATE -->
+    <!-- TAB 3: PROGRESS, HEATMAP & DATA BACKUP -->
     <section id="content-report" class="hidden space-y-6">
-      <div class="glass-card p-6 rounded-xl max-w-2xl mx-auto space-y-4">
-        <h2 class="text-xl font-bold text-center text-emerald-400">Official Qadha Progress & Audit Certificate</h2>
-        <p class="text-xs opacity-70 text-center">Generate and download a certified audit report signed by CEO Zohaib Qaiser.</p>
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Report Issue Date</label>
-          <input type="date" id="cert-date" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+      
+      <!-- VISUAL STREAK CALENDAR (30-DAY HEATMAP GRID) -->
+      <div class="glass-card p-6 rounded-xl space-y-4">
+        <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+          <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-calendar-days"></i> 30-Day Activity Heatmap
+          </h3>
+          <span class="text-[11px] opacity-60">Darker Green = Higher Consistency</span>
         </div>
-        <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
-          <i class="fa-solid fa-file-pdf mr-2"></i>Generate Certificate Report
-        </button>
+        <div class="flex flex-wrap gap-2 pt-2 justify-center sm:justify-start" id="heatmap-grid-container">
+          <!-- Dynamic Heatmap Tiles Injected Here -->
+        </div>
+      </div>
+
+      <!-- EXPORT / IMPORT DATA BACKUP & CERTIFICATE GENERATION -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Official Audit Certificate -->
+        <div class="glass-card p-6 rounded-xl space-y-4">
+          <h2 class="text-lg font-bold text-emerald-400 text-center">Official Qadha Audit Certificate</h2>
+          <p class="text-xs opacity-70 text-center">Generate a certified PDF audit report signed by CEO Zohaib Qaiser.</p>
+          <div>
+            <label class="block text-xs opacity-70 mb-1">Report Issue Date</label>
+            <input type="date" id="cert-date" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-white text-sm" />
+          </div>
+          <button onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
+            <i class="fa-solid fa-file-pdf mr-2"></i>Generate Certificate Report
+          </button>
+        </div>
+
+        <!-- Exportable Data Backup (JSON/CSV) -->
+        <div class="glass-card p-6 rounded-xl space-y-4 flex flex-col justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-amber-400 text-center">Full Data Ownership & Backup</h2>
+            <p class="text-xs opacity-70 text-center mt-1">Export your personal Qadha log history as a backup file or restore previously saved data.</p>
+          </div>
+          <div class="space-y-3 pt-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="exportDataJSON()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-file-code text-amber-400"></i> Export JSON
+              </button>
+              <button onclick="exportDataCSV()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-file-csv text-emerald-400"></i> Export CSV
+              </button>
+            </div>
+            <div class="border-t border-gray-800 pt-3">
+              <label class="block text-[11px] opacity-70 mb-1 text-center">Import Backup File (JSON)</label>
+              <input type="file" id="import-file-input" accept=".json" onchange="importDataJSON(event)" class="w-full bg-gray-800 text-xs border border-gray-700 rounded p-1.5 text-gray-300">
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -473,6 +620,53 @@
       { date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } }
     ];
 
+    let audioEnabled = localStorage.getItem('tadarak_audio') !== 'false';
+
+    // Web Audio API Synth Generator for Subtle Audio Feedback
+    function playAudioTone(freq = 587.33, type = 'sine', duration = 0.12) {
+      if (!audioEnabled) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {
+        // Audio context suppressed until user gesture
+      }
+    }
+
+    function toggleAudioFeedback() {
+      audioEnabled = !audioEnabled;
+      localStorage.setItem('tadarak_audio', audioEnabled);
+      updateAudioButtonUI();
+      if (audioEnabled) playAudioTone(659.25, 'sine', 0.15);
+    }
+
+    function updateAudioButtonUI() {
+      const icon = document.getElementById('audio-icon');
+      if (audioEnabled) {
+        icon.className = 'fa-solid fa-volume-high text-emerald-400';
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark opacity-50';
+      }
+    }
+
+    // Initialize App
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+      registerServiceWorker();
+      requestNotificationPermission();
+    });
+
     function init() {
       if (dailyLogs.length === 0 || dailyLogs[0].date !== todayStr) {
         dailyLogs.unshift({
@@ -482,6 +676,8 @@
         localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
       }
 
+      updateAudioButtonUI();
+
       if (currentUser) {
         renderAuthHeader();
         populateUserData();
@@ -490,18 +686,43 @@
       }
       
       renderLogs();
+      renderHeatmap();
       listenToGlobalLeaderboard();
       updateMascotMood();
       document.getElementById('cert-date').valueAsDate = new Date();
 
-      // Show welcome notification after 1.5 seconds
       setTimeout(() => {
-        showMascotSpeech("Assalamu Alaikum! I'm Tariq 🦅. I'll help you stay on track with your Qadha!");
+        showMascotSpeech("Assalamu Alaikum! I'm Tariq 🦅. Let's make progress on our Qadha today!");
       }, 1500);
     }
 
     function changeTheme(themeName) {
       document.body.setAttribute('data-theme', themeName);
+      if (audioEnabled) playAudioTone(523.25, 'triangle', 0.1);
+    }
+
+    function checkCosmeticUnlocks() {
+      if (!currentUser) return;
+      const xp = currentUser.xp || 0;
+      const streak = currentUser.streak || 0;
+
+      // Tier 1 Cosmetic: Andalusian Midnight (100 XP)
+      const optAndalucian = document.getElementById('opt-andalusian');
+      const badgeTheme1 = document.getElementById('badge-theme-1');
+      if (xp >= 100) {
+        optAndalucian.disabled = false;
+        optAndalucian.innerText = "🌊 Andalusian Midnight (Unlocked!)";
+        if (badgeTheme1) badgeTheme1.classList.remove('opacity-40');
+      }
+
+      // Tier 2 Cosmetic: Al-Aqsa Dawn (30-Day Streak)
+      const optAlaqsa = document.getElementById('opt-alaqsa');
+      const badgeTheme2 = document.getElementById('badge-theme-2');
+      if (streak >= 30) {
+        optAlaqsa.disabled = false;
+        optAlaqsa.innerText = "🕌 Al-Aqsa Dawn (Unlocked!)";
+        if (badgeTheme2) badgeTheme2.classList.remove('opacity-40');
+      }
     }
 
     function renderAuthHeader() {
@@ -521,13 +742,12 @@
       document.getElementById('q-name').value = currentUser.name;
       document.getElementById('q-email').value = currentUser.email;
       
-      // Update Milestones & Badges
       const totalLogged = Math.floor(xp / 10);
       if (totalLogged >= 1) document.getElementById('badge-1').classList.remove('opacity-40');
       if ((currentUser.streak || 0) >= 3) document.getElementById('badge-2').classList.remove('opacity-40');
       if (totalLogged >= 100) document.getElementById('badge-3').classList.remove('opacity-40');
-      if (totalLogged >= 500) document.getElementById('badge-4').classList.remove('opacity-40');
 
+      checkCosmeticUnlocks();
       calculateQadhaMetrics();
       updateMascotMood();
     }
@@ -540,6 +760,7 @@
         document.getElementById('calc-completion-date').innerText = "--";
         document.getElementById('calc-percent').innerText = "0%";
         document.getElementById('calc-progress-bar').style.width = "0%";
+        updateRingProgress(0);
         return;
       }
 
@@ -569,11 +790,61 @@
       document.getElementById('calc-percent').innerText = `${progressPercent}%`;
       document.getElementById('calc-progress-bar').style.width = `${Math.min(100, progressPercent)}%`;
       
+      updateRingProgress(progressPercent);
+
       if (remainingPrayers === 0 && totalTargetPrayers > 0) {
         document.getElementById('calc-completion-date').innerText = "Completed!";
       } else {
         document.getElementById('calc-completion-date').innerText = projectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
+    }
+
+    function updateRingProgress(percent) {
+      const circle = document.getElementById('ring-progress-circle');
+      const text = document.getElementById('ring-percent-text');
+      const radius = circle.r.baseVal.value;
+      const circumference = 2 * Math.PI * radius; // 251.2
+      const strokeOffset = circumference - (percent / 100) * circumference;
+      
+      circle.style.strokeDashoffset = strokeOffset;
+      text.innerText = `${percent}%`;
+    }
+
+    // CUSTOM GOAL TARGET CALCULATOR
+    function calculateCustomGoal() {
+      if (!currentUser || !currentUser.dob) return;
+      const targetInput = document.getElementById('target-date-input').value;
+      if (!targetInput) return;
+
+      const targetDate = new Date(targetInput);
+      const today = new Date();
+      const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        document.getElementById('custom-goal-result').innerText = "Please select a future date!";
+        document.getElementById('apply-pace-btn').classList.add('hidden');
+        return;
+      }
+
+      const totalRemaining = parseInt(document.getElementById('calc-remaining').innerText.replace(/,/g, '')) || 0;
+      const requiredDaily = Math.ceil(totalRemaining / diffDays);
+
+      document.getElementById('custom-goal-result').innerText = `${requiredDaily} prayers/day (${(requiredDaily/6).toFixed(1)} sets) over ${diffDays} days`;
+      
+      const applyBtn = document.getElementById('apply-pace-btn');
+      applyBtn.classList.remove('hidden');
+      applyBtn.dataset.pace = requiredDaily;
+    }
+
+    function applyCustomGoalPace() {
+      const pace = parseInt(document.getElementById('apply-pace-btn').dataset.pace) || 6;
+      const selector = document.getElementById('pace-selector');
+      
+      // Update pace selector value or add dynamically
+      selector.value = pace > 18 ? 18 : (pace < 6 ? 6 : pace);
+      calculateQadhaMetrics();
+      showMascotSpeech(`Custom goal pace of ${pace} prayers/day set! 🎯`);
+      if (audioEnabled) playAudioTone(880, 'sine', 0.15);
     }
 
     function switchTab(tabName) {
@@ -583,6 +854,7 @@
       });
       document.getElementById(`content-${tabName}`).classList.remove('hidden');
       document.getElementById(`tab-${tabName}`).className = "pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold";
+      if (audioEnabled) playAudioTone(440, 'sine', 0.08);
     }
 
     function renderLogs() {
@@ -604,8 +876,8 @@
         prayersList.forEach(prayer => {
           const btn = document.createElement('button');
           const isDone = log.logged[prayer];
-          btn.className = `p-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-gray-800 opacity-70 hover:opacity-100'}`;
-          btn.innerHTML = `<i class="fa-solid ${isDone ? 'fa-check' : 'fa-plus'}"></i><span>${prayer}</span>`;
+          btn.className = `p-2.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-inner' : 'bg-gray-800 opacity-70 hover:opacity-100 hover:bg-gray-700'}`;
+          btn.innerHTML = `<i class="${isDone ? 'fa-solid fa-circle-check text-emerald-400' : 'fa-regular fa-circle'}"></i> <span>${prayer}</span>`;
           btn.onclick = () => togglePrayer(logIdx, prayer);
           grid.appendChild(btn);
         });
@@ -621,44 +893,176 @@
         return;
       }
 
-      const currentState = dailyLogs[logIdx].logged[prayer];
-      dailyLogs[logIdx].logged[prayer] = !currentState;
+      const currentStatus = dailyLogs[logIdx].logged[prayer];
+      dailyLogs[logIdx].logged[prayer] = !currentStatus;
       
-      currentUser.xp = (currentUser.xp || 0) + (!currentState ? 10 : -10);
-      if (currentUser.xp < 0) currentUser.xp = 0;
-
+      const xpChange = !currentStatus ? 10 : -10;
+      currentUser.xp = Math.max(0, (currentUser.xp || 0) + xpChange);
+      
       localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      
-      syncUserToFirebase(currentUser);
+
+      if (!currentStatus && audioEnabled) playAudioTone(783.99, 'sine', 0.12); // G5 note
+
       populateUserData();
       renderLogs();
+      renderHeatmap();
+      syncUserToFirestore();
+    }
 
-      if (!currentState) {
-        showMascotSpeech(`MashaAllah! You completed ${prayer}! +10 XP earned! 🌟`);
+    // QUICK-LOG "LOG WHOLE DAY" BUTTON LOGIC
+    function logWholeDayQuick() {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+
+      let addedCount = 0;
+      const todayLog = dailyLogs[0].logged;
+      
+      prayersList.forEach(prayer => {
+        if (!todayLog[prayer]) {
+          todayLog[prayer] = true;
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        currentUser.xp = (currentUser.xp || 0) + (addedCount * 10);
+        localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+        localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+        
+        if (audioEnabled) {
+          playAudioTone(523.25, 'sine', 0.1);
+          setTimeout(() => playAudioTone(659.25, 'sine', 0.1), 100);
+          setTimeout(() => playAudioTone(783.99, 'sine', 0.2), 200);
+        }
+
+        populateUserData();
+        renderLogs();
+        renderHeatmap();
+        syncUserToFirestore();
+        showMascotSpeech(`Mashallah! Logged full day (+${addedCount * 10} XP) ⚡`);
+      } else {
+        showMascotSpeech("All 6 prayers for today are already checked! 🌟");
       }
     }
 
-    // REALTIME LEADERBOARD WITH FICTIONAL MEMBERS INTEGRATED
+    // 30-DAY VISUAL HEATMAP RENDERER
+    function renderHeatmap() {
+      const container = document.getElementById('heatmap-grid-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const days = [];
+      const now = new Date();
+
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        const log = dailyLogs.find(l => l.date === dateStr);
+        let completedCount = 0;
+        if (log && log.logged) {
+          completedCount = Object.values(log.logged).filter(Boolean).length;
+        }
+
+        let bgClass = 'bg-gray-800/80 border border-gray-700/50';
+        if (completedCount >= 1 && completedCount <= 2) bgClass = 'bg-emerald-900/60 border border-emerald-700/50';
+        if (completedCount >= 3 && completedCount <= 5) bgClass = 'bg-emerald-600/80 border border-emerald-500/80';
+        if (completedCount === 6) bgClass = 'bg-emerald-400 border border-emerald-300 shadow-sm';
+
+        const tile = document.createElement('div');
+        tile.className = `heatmap-cell ${bgClass} cursor-pointer`;
+        tile.title = `${dateStr}: ${completedCount}/6 Qadha Completed`;
+        container.appendChild(tile);
+      }
+    }
+
+    // DATA BACKUP EXPORT & IMPORT ENGINE
+    function exportDataJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+        user: currentUser,
+        logs: dailyLogs,
+        exportedAt: new Date().toISOString()
+      }));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `Tadarak_Backup_${todayStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showMascotSpeech("Backup file downloaded safely! 💾");
+    }
+
+    function exportDataCSV() {
+      let csvContent = "data:text/csv;charset=utf-8,Date,Fajr,Dhuhr,Asr,Maghrib,Isha,Witr\n";
+      dailyLogs.forEach(l => {
+        const row = [l.date, l.logged.Fajr, l.logged.Dhuhr, l.logged.Asr, l.logged.Maghrib, l.logged.Isha, l.logged.Witr].join(",");
+        csvContent += row + "\n";
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Tadarak_Logs_${todayStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.logs) dailyLogs = parsed.logs;
+          if (parsed.user) currentUser = parsed.user;
+          
+          localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+          localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+          
+          init();
+          showMascotSpeech("Data successfully restored from backup! 🎉");
+        } catch (err) {
+          alert("Invalid JSON backup file format.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // FIREBASE SYNC & LEADERBOARD
+    function syncUserToFirestore() {
+      if (!currentUser || !currentUser.email) return;
+      const userRef = db.collection('users').doc(currentUser.email.replace(/\./g, '_'));
+      
+      userRef.set({
+        name: currentUser.name,
+        email: currentUser.email,
+        dob: currentUser.dob,
+        xp: currentUser.xp || 0,
+        streak: currentUser.streak || 1,
+        freezes: currentUser.freezes || 2,
+        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
     function listenToGlobalLeaderboard() {
-      db.collection("users").orderBy("xp", "desc").onSnapshot((snapshot) => {
-        let fetchedUsers = [];
-        snapshot.forEach((doc) => {
-          fetchedUsers.push(doc.data());
+      db.collection('users').orderBy('xp', 'desc').limit(20).onSnapshot(snapshot => {
+        globalUsers = [];
+        snapshot.forEach(doc => globalUsers.push(doc.data()));
+        
+        fictionalCommunityMembers.forEach(mem => {
+          if (!globalUsers.some(u => u.email === mem.email)) globalUsers.push(mem);
         });
 
-        // Combine live users with genuine community profiles
-        const combined = [...fetchedUsers, ...fictionalCommunityMembers];
-        
-        // Remove duplicate emails if any
-        const uniqueMap = new Map();
-        combined.forEach(item => uniqueMap.set(item.email, item));
-        
-        globalUsers = Array.from(uniqueMap.values()).sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        globalUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
         renderLeaderboard();
-      }, (error) => {
-        console.error("Error fetching leaderboard: ", error);
-        globalUsers = fictionalCommunityMembers.sort((a, b) => b.xp - a.xp);
+      }, err => {
+        globalUsers = fictionalCommunityMembers;
         renderLeaderboard();
       });
     }
@@ -667,105 +1071,64 @@
       const body = document.getElementById('leaderboard-body');
       body.innerHTML = '';
 
-      globalUsers.forEach((u, i) => {
-        if (currentUser && u.email === currentUser.email) {
-          document.getElementById('user-rank').innerText = `#${i+1}`;
-        }
-        body.innerHTML += `
-          <tr class="hover:bg-gray-800/40">
-            <td class="p-4 font-bold ${i===0 ? 'text-yellow-400' : 'opacity-70'}">#${i+1}</td>
-            <td class="p-4 font-medium">${u.name}</td>
-            <td class="p-4 text-emerald-400 font-bold">${u.xp || 0} XP</td>
-            <td class="p-4 text-orange-400"><i class="fa-solid fa-fire mr-1"></i>${u.streak || 0}d</td>
-          </tr>
+      globalUsers.forEach((u, idx) => {
+        const isMe = currentUser && currentUser.email === u.email;
+        if (isMe) document.getElementById('user-rank').innerText = `#${idx + 1}`;
+
+        const tr = document.createElement('tr');
+        tr.className = isMe ? 'bg-emerald-500/10 font-bold text-emerald-400' : 'hover:bg-gray-800/40';
+        tr.innerHTML = `
+          <td class="p-4">${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</td>
+          <td class="p-4">${u.name} ${isMe ? '(You)' : ''}</td>
+          <td class="p-4 text-emerald-400 font-bold">${u.xp || 0} XP</td>
+          <td class="p-4">${u.streak || 0} Days 🔥</td>
         `;
+        body.appendChild(tr);
       });
     }
 
-    // MASCOT LOGIC: CURSOR EYE MOVEMENT & MOODS
-    document.addEventListener('mousemove', (e) => {
-      const pupilL = document.getElementById('pupil-left');
-      const pupilR = document.getElementById('pupil-right');
-      if (!pupilL || !pupilR) return;
+    // MASCOT INTERACTION
+    function showMascotSpeech(msg) {
+      const bubble = document.getElementById('mascot-speech');
+      document.getElementById('mascot-msg').innerText = msg;
+      bubble.classList.remove('opacity-0', 'translate-y-2');
+      setTimeout(() => bubble.classList.add('opacity-0', 'translate-y-2'), 4000);
+    }
 
-      const rect = pupilL.getBoundingClientRect();
-      const mascotX = rect.left + rect.width / 2;
-      const mascotY = rect.top + rect.height / 2;
-
-      const angle = Math.atan2(e.clientY - mascotY, e.clientX - mascotX);
-      const distance = Math.min(3, Math.hypot(e.clientX - mascotX, e.clientY - mascotY) / 50);
-
-      const moveX = Math.cos(angle) * distance;
-      const moveY = Math.sin(angle) * distance;
-
-      pupilL.setAttribute('transform', `translate(${moveX}, ${moveY})`);
-      pupilR.setAttribute('transform', `translate(${moveX}, ${moveY})`);
-    });
+    function triggerMascotClick() {
+      showMascotSpeech("Keep going! Every logged prayer brings you closer to your goal! 🕌");
+      if (audioEnabled) playAudioTone(523.25, 'sine', 0.1);
+    }
 
     function updateMascotMood() {
-      const todayLog = dailyLogs.find(l => l.date === todayStr);
-      const prayersDone = todayLog ? Object.values(todayLog.logged).filter(Boolean).length : 0;
       const tears = document.getElementById('mascot-tears');
-
-      if (prayersDone === 0) {
+      if (currentUser && (currentUser.streak || 0) === 0) {
         tears.classList.remove('hidden');
       } else {
         tears.classList.add('hidden');
       }
     }
 
-    function triggerMascotClick() {
-      const todayLog = dailyLogs.find(l => l.date === todayStr);
-      const prayersDone = todayLog ? Object.values(todayLog.logged).filter(Boolean).length : 0;
-
-      if (prayersDone === 0) {
-        showMascotSpeech("Tariq is crying! 😢 You haven't logged any Qadha prayers today yet! Let's complete one!");
-      } else if (prayersDone < 6) {
-        showMascotSpeech(`Great progress! You've logged ${prayersDone}/6 prayers today. Keep going! 🦅`);
-      } else {
-        showMascotSpeech("MashaAllah! You completed all daily Qadha goals today! Tariq is proud of you! 🎉");
-      }
-    }
-
-    function showMascotSpeech(msg) {
-      const bubble = document.getElementById('mascot-speech');
-      document.getElementById('mascot-msg').innerText = msg;
-      bubble.classList.remove('opacity-0', 'translate-y-2');
-      
-      setTimeout(() => {
-        bubble.classList.add('opacity-0', 'translate-y-2');
-      }, 5000);
-    }
-
+    // AUTH MODAL LOGIC
     function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-modal').classList.add('flex'); }
     function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('auth-modal').classList.remove('flex'); }
 
     function handleAuthSubmit(e) {
-      const name = document.getElementById('auth-name').value;
-      const email = document.getElementById('auth-email').value;
-      const dob = document.getElementById('auth-dob').value;
-
-      currentUser = { 
-        name: name, 
-        email: email, 
-        dob: dob, 
-        xp: currentUser ? (currentUser.xp || 0) : 0, 
-        streak: currentUser ? (currentUser.streak || 1) : 1, 
-        freezes: currentUser ? (currentUser.freezes || 2) : 2 
+      e.preventDefault();
+      currentUser = {
+        name: document.getElementById('auth-name').value,
+        email: document.getElementById('auth-email').value,
+        dob: document.getElementById('auth-dob').value,
+        xp: currentUser ? currentUser.xp : 0,
+        streak: currentUser ? currentUser.streak : 1,
+        freezes: 2
       };
-      
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      syncUserToFirebase(currentUser);
-
       renderAuthHeader();
       populateUserData();
+      syncUserToFirestore();
       closeAuthModal();
-    }
-
-    function syncUserToFirebase(userObj) {
-      if (!userObj || !userObj.email) return;
-      const docId = userObj.email.replace(/[^a-zA-Z0-9]/g, "_");
-      db.collection("users").doc(docId).set(userObj, { merge: true }).catch(console.error);
+      showMascotSpeech(`Welcome back, ${currentUser.name}! Let's do this! 🦅`);
     }
 
     function logout() {
@@ -774,80 +1137,61 @@
       location.reload();
     }
 
-    // ENHANCED CERTIFICATE REPORT GENERATOR (jsPDF)
+    // CERTIFICATE PDF GENERATION
     function generatePDF() {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const name = currentUser ? currentUser.name : 'Valued User';
-      const date = document.getElementById('cert-date').value;
-
-      // Header Banner
+      const doc = new jsPDF('landscape');
+      
       doc.setFillColor(11, 15, 25);
-      doc.rect(0, 0, 210, 40, "F");
+      doc.rect(0, 0, 297, 210, 'F');
+      
+      doc.setLineWidth(2);
+      doc.setDrawColor(16, 185, 129);
+      doc.rect(10, 10, 277, 190);
 
       doc.setTextColor(16, 185, 129);
-      doc.setFont("helvetica", "bold");
+      doc.setFontSize(28);
+      doc.text("TADARAK QADHA AUDIT CERTIFICATE", 148, 45, { align: "center" });
+
+      doc.setTextColor(243, 244, 246);
+      doc.setFontSize(14);
+      doc.text(`This is to certify that ${currentUser ? currentUser.name : 'Valued User'}`, 148, 75, { align: "center" });
+      doc.text(`has logged a total verified performance of:`, 148, 90, { align: "center" });
+
       doc.setFontSize(22);
-      doc.text("TADARAK QADHA SYSTEMS", 20, 22);
+      doc.setTextColor(234, 179, 8);
+      doc.text(`${currentUser ? currentUser.xp || 0 : 0} Total XP  |  ${currentUser ? Math.floor((currentUser.xp||0)/10) : 0} Qadha Prayers Completed`, 148, 115, { align: "center" });
 
       doc.setFontSize(10);
-      doc.setTextColor(200, 200, 200);
-      doc.text("Official Qadha Progress & Audit Certificate", 20, 30);
+      doc.setTextColor(156, 163, 175);
+      doc.text(`Report Date: ${document.getElementById('cert-date').value}`, 148, 140, { align: "center" });
 
-      // User Information Section
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("ACCOUNT AUDIT SUMMARY", 20, 55);
+      doc.setDrawColor(255, 255, 255);
+      doc.line(180, 170, 250, 170);
+      doc.text("Zohaib Qaiser, Founder & CEO", 215, 177, { align: "center" });
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Account Name: ${name}`, 20, 65);
-      doc.text(`Certificate Issue Date: ${date}`, 20, 72);
-      doc.text(`Registered DOB: ${currentUser ? currentUser.dob : 'N/A'}`, 20, 79);
-
-      // Calculations Audit Grid Box
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(20, 90, 170, 70, 3, 3, "FD");
-
-      const totalTarget = document.getElementById('calc-total').innerText;
-      const completed = document.getElementById('calc-completed').innerText;
-      const remaining = document.getElementById('calc-remaining').innerText;
-      const percent = document.getElementById('calc-percent').innerText;
-      const completionDate = document.getElementById('calc-completion-date').innerText;
-
-      doc.setFont("helvetica", "bold");
-      doc.text("QADHA ENGINE MATHEMATICAL BREAKDOWN", 25, 102);
-
-      doc.setFont("helvetica", "normal");
-      doc.text(`1. Total Lifetime Obligation (Puberty to Today): ${totalTarget} Prayers`, 25, 114);
-      doc.text(`2. Total Verified Qadha Logged: ${completed} Prayers (${currentUser ? currentUser.xp : 0} XP)`, 25, 123);
-      doc.text(`3. Remaining Obligations Left: ${remaining} Prayers`, 25, 132);
-      doc.text(`4. Overall Completion Rate: ${percent}`, 25, 141);
-      doc.text(`5. Projected Completion Target: ${completionDate}`, 25, 150);
-
-      // Verification Line
-      doc.setDrawColor(16, 185, 129);
-      doc.setLineWidth(1);
-      doc.line(20, 175, 190, 175);
-
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(9);
-      doc.text("This document certifies calculated Qadha obligations recorded on the Tadarak engine.", 20, 185);
-
-      // Executive Signature
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("Zohaib Qaiser", 20, 210);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.text("Founder & CEO, Tadarak", 20, 216);
-
-      doc.save(`Tadarak_Certificate_Report_${name.replace(/\s+/g, '_')}.pdf`);
+      doc.save(`Tadarak_Certificate_${currentUser ? currentUser.name : 'Report'}.pdf`);
     }
 
-    window.onload = init;
+    // PWA & PUSH NOTIFICATIONS
+    function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+          self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+        `;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+      }
+    }
+
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        setTimeout(() => {
+          Notification.requestPermission();
+        }, 5000);
+      }
+    }
   </script>
 </body>
 </html>
