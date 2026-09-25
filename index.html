@@ -857,20 +857,17 @@
       calculateQadhaMetrics();
       renderHeatmap();
       updateBadges();
-      listenToGlobalLeaderboard();
+      fetchLeaderboard();
       updateTariqMoodState();
     }
 
     function updateUserStatsUI() {
-      const xpEl = document.getElementById('user-xp');
-      const streakEl = document.getElementById('user-streak');
-      const freezesEl = document.getElementById('user-freezes');
-      if (xpEl) xpEl.innerText = `${currentUser.xp} XP`;
-      if (streakEl) streakEl.innerText = `${currentUser.streak} Days`;
-      if (freezesEl) freezesEl.innerText = `${currentUser.freezes} Left`;
+      document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
+      document.getElementById('user-streak').innerText = `${currentUser.streak} Days`;
+      document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
       
       const authSec = document.getElementById('auth-section');
-      if (authSec && currentUser.email !== "guest@tadarak.org") {
+      if (currentUser.email !== "guest@tadarak.org") {
         authSec.innerHTML = `
           <div class="flex items-center space-x-2">
             <span class="text-xs text-gray-300 font-semibold">${currentUser.fullName}</span>
@@ -881,65 +878,32 @@
     }
 
     function openAuthModal() {
-      const modal = document.getElementById('auth-modal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
+      document.getElementById('auth-modal').classList.remove('hidden');
+      document.getElementById('auth-modal').classList.add('flex');
     }
 
     function closeAuthModal() {
-      const modal = document.getElementById('auth-modal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
+      document.getElementById('auth-modal').classList.add('hidden');
+      document.getElementById('auth-modal').classList.remove('flex');
     }
 
-    async function handleAuthSubmit(e) {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
+   async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
 
-      const nameInput = document.getElementById('auth-name');
-      const emailInput = document.getElementById('auth-email');
-      const dobInput = document.getElementById('auth-dob');
+  const name = document.getElementById('auth-name').value;
+  const email = document.getElementById('auth-email').value;
+  const dob = document.getElementById('auth-dob').value;
 
-      const name = nameInput ? nameInput.value : currentUser.fullName;
-      const email = emailInput ? emailInput.value : currentUser.email;
-      const dob = dobInput ? dobInput.value : currentUser.dob;
+  currentUser.fullName = name;
+  currentUser.email = email;
+  currentUser.dob = dob;
 
-      currentUser.fullName = name;
-      currentUser.email = email;
-      currentUser.dob = dob;
-
-      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      closeAuthModal();
-      updateUserStatsUI();
-      calculateQadhaMetrics();
-
-      try {
-        await fetch(form.action, {
-          method: form.method,
-          body: formData,
-          headers: { 'Accept': 'application/json' }
-        });
-      } catch (error) {
-        console.error('Formspree submission error:', error);
-      }
-
-      if (currentUser.email !== "guest@tadarak.org") {
-        db.collection("users").doc(currentUser.email).set({
-          fullName: name,
-          email: currentUser.email,
-          xp: currentUser.xp,
-          streak: currentUser.streak,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
-
-      showMascotSpeech(`Welcome, ${name}! Your profile is now live on the Hall of Fame! 🦅`);
-    }
+  localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+  closeAuthModal();
+  updateUserStatsUI();
+  calculateQadhaMetrics();
   
   // 1. Silent Formspree background submission
   try {
@@ -1216,47 +1180,27 @@ function logout() {
       }
     }
 
-    // --- LEADERBOARD & REAL-TIME FIRESTORE SYNC ---
-    function listenToGlobalLeaderboard() {
-      db.collection("users").onSnapshot(snapshot => {
-        liveFirestoreUsers = [];
-        snapshot.forEach(doc => {
-          liveFirestoreUsers.push(doc.data());
-        });
-        renderLeaderboard();
-      }, error => {
-        console.warn("Firestore access error, falling back to local leaderboard:", error);
-        renderLeaderboard();
-      });
-    }
+    // --- LEADERBOARD ---
+    function fetchLeaderboard() {
+      let users = [...fictionalCommunityMembers];
+      
+      if (currentUser.email !== "guest@tadarak.org") {
+        let existingIdx = users.findIndex(u => u.email === currentUser.email);
+        if (existingIdx >= 0) users[existingIdx] = currentUser;
+        else users.push(currentUser);
+      } else {
+        users.push(currentUser);
+      }
 
-    function renderLeaderboard() {
-      let combinedMap = new Map();
-
-      // 1. Load default community profiles
-      fictionalCommunityMembers.forEach(u => combinedMap.set(u.email, u));
-
-      // 2. Merge real users fetched from Firestore
-      liveFirestoreUsers.forEach(u => {
-        if (u.email) combinedMap.set(u.email, u);
-      });
-
-      // 3. Overlay the current session user
-      if (currentUser) combinedMap.set(currentUser.email, currentUser);
-
-      // Sort all combined profiles by XP (descending)
-      let sortedUsers = Array.from(combinedMap.values());
-      sortedUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+      users.sort((a, b) => b.xp - a.xp);
 
       const tbody = document.getElementById('leaderboard-body');
-      if (!tbody) return;
       tbody.innerHTML = '';
 
-      sortedUsers.forEach((u, idx) => {
-        const isUser = currentUser && u.email === currentUser.email;
-        const rankElem = document.getElementById('user-rank');
-        if (isUser && rankElem) {
-          rankElem.innerText = `#${idx + 1}`;
+      users.forEach((u, idx) => {
+        const isUser = u.email === currentUser.email;
+        if (isUser) {
+          document.getElementById('user-rank').innerText = `#${idx + 1}`;
         }
 
         const tr = document.createElement('tr');
@@ -1264,11 +1208,11 @@ function logout() {
         tr.innerHTML = `
           <td class="p-4">#${idx + 1}</td>
           <td class="p-4 flex items-center space-x-2">
-            <span>${u.fullName || u.name || "Believer"}</span>
+            <span>${u.fullName || u.name}</span>
             ${isUser ? '<span class="text-[10px] bg-emerald-500 text-black px-1.5 py-0.5 rounded font-extrabold">YOU</span>' : ''}
           </td>
-          <td class="p-4 text-emerald-400">${u.xp || 0} XP</td>
-          <td class="p-4"><i class="fa-solid fa-fire text-orange-400 mr-1"></i>${u.streak || 0} Days</td>
+          <td class="p-4 text-emerald-400">${u.xp} XP</td>
+          <td class="p-4"><i class="fa-solid fa-fire text-orange-400 mr-1"></i>${u.streak} Days</td>
         `;
         tbody.appendChild(tr);
       });
