@@ -670,7 +670,7 @@
     ];
 
     let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
-    let globalUsers = [];
+    let liveFirestoreUsers = [];
 
     let todayStr = new Date().toISOString().split('T')[0];
     let dailyLogs = JSON.parse(localStorage.getItem('tadarak_logs')) || [
