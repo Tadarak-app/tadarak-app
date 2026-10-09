@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Warm Golden Sunset Background Gradient -->
+    <radialGradient id="goldenSky" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="35%" stop-color="#f59e0b"/>
+      <stop offset="70%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#0b1318"/>
+    </radialGradient>
+
+    <!-- Golden Central Glow -->
+    <radialGradient id="goldenGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Logo Emerald Gradient -->
+    <linearGradient id="logoEm" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Container Base with Golden Sky Theme -->
+  <rect width="512" height="512" rx="110" fill="url(#goldenSky)"/>
+  <rect x="18" y="18" width="476" height="476" rx="95" fill="none" stroke="#fbbf24" stroke-width="6" stroke-opacity="0.4"/>
+
+  <!-- Golden Central Glow Effect -->
+  <circle cx="256" cy="256" r="180" fill="url(#goldenGlow)"/>
+
+  <!-- Dark Overlay Card for Contrast -->
+  <circle cx="256" cy="256" r="150" fill="#0b1318" opacity="0.6"/>
+
+  <!-- OFFICIAL TADARAK EMERALD LOGO MARK (FRONT & CENTER) -->
+  <g fill="url(#logoEm)" transform="translate(256, 256) scale(1.15)">
+    <!-- Central Vertical Pillar -->
+    <rect x="-14" y="-140" width="28" height="260" rx="4" stroke="#047857" stroke-width="2"/>
+
+    <!-- Top Cap / Tip -->
+    <polygon points="0,-165 -18,-140 18,-140"/>
+
+    <!-- Top Horizontal Tier -->
+    <polygon points="-80,-100 80,-100 60,-65 -60,-65"/>
+
+    <!-- Middle Horizontal Tier -->
+    <polygon points="-110,-10 110,-10 85,25 -85,25"/>
+
+    <!-- Bottom Curved Dome / Base -->
+    <path d="M -125,120 C -70,80 70,80 125,120 L -125,120 Z"/>
+  </g>
+</svg>
