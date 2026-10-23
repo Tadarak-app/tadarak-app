@@ -124,6 +124,27 @@
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .glass-card:hover { border-color: color-mix(in srgb, var(--accent) 38%, var(--card-border)); }
+    button, a, input, select, textarea { transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 640px) {
+      nav > div { flex-wrap: wrap; gap: .75rem; }
+      nav > div > div:last-child { width: 100%; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+      #theme-selector { max-width: min(58vw, 250px); }
+      #auth-section { margin-left: auto; }
+      main { padding-left: .75rem !important; padding-right: .75rem !important; padding-top: 1.25rem !important; }
+      #tab-navigation { overflow-x: auto; white-space: nowrap; gap: 1.25rem; scrollbar-width: thin; }
+      #tab-navigation button { flex: 0 0 auto; }
+      .responsive-table { overflow-x: auto; }
+      .responsive-table table { min-width: 520px; }
+      #mascot-avatar-container { width: 4.5rem; height: 4.5rem; }
+      #mascot-speech { max-width: min(19rem, calc(100vw - 2rem)); }
+      .mobile-stack { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
 
     .watermark-bg {
@@ -139,7 +160,7 @@
     }
 
     .eye-pupil {
-      transition: transform 0.05s ease-out;
+      transition: cx 0.08s ease-out, cy 0.08s ease-out, transform 0.05s ease-out;
     }
 
     /* Heatmap Grid Styles */
@@ -259,15 +280,15 @@
     </div>
 
     <!-- TABS NAVIGATION -->
-    <div class="flex border-b border-gray-800 space-x-8 mb-6 text-sm font-medium">
-      <button onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Home & Calculator</button>
-      <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame</button>
-      <button onclick="switchTab('report')" id="tab-report" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Progress & Certificate</button>
-      <button onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About CEO & FAQs</button>
+    <div id="tab-navigation" role="tablist" aria-label="Tracker sections" class="flex border-b border-gray-800 space-x-8 mb-6 text-sm font-medium">
+      <button type="button" role="tab" aria-selected="true" aria-controls="content-daily" tabindex="0" data-tab="daily" onclick="switchTab('daily')" id="tab-daily" class="pb-3 border-b-2 border-emerald-500 text-emerald-400">Home & Calculator</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="content-leaderboard" tabindex="-1" data-tab="leaderboard" onclick="switchTab('leaderboard')" id="tab-leaderboard" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Hall of Fame</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="content-report" tabindex="-1" data-tab="report" onclick="switchTab('report')" id="tab-report" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">Progress & Certificate</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="content-about" tabindex="-1" data-tab="about" onclick="switchTab('about')" id="tab-about" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white">About CEO & FAQs</button>
     </div>
 
     <!-- TAB 1: HOME, QADHA ENGINE CALCULATOR & DAILY LOG -->
-    <section id="content-daily" class="space-y-6">
+    <section id="content-daily" role="tabpanel" aria-labelledby="tab-daily" class="space-y-6">
       
       <!-- LIFETIME QADHA ENGINE & PROJECTION SUMMARY -->
       <div class="glass-card p-6 rounded-xl border border-emerald-500/30 space-y-6">
@@ -295,7 +316,7 @@
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
             <p class="text-xs opacity-70 mb-1">Total Obligation</p>
             <p id="calc-total" class="text-xl font-bold">0</p>
-            <p class="text-[10px] opacity-60">Prayers (Fard + Witr)</p>
+            <p id="calc-total-note" class="text-[10px] opacity-60">Prayers (Fard + Witr)</p>
           </div>
           <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
             <p class="text-xs opacity-70 mb-1">Completed Qadha</p>
@@ -336,6 +357,21 @@
           </div>
         </div>
 
+        <!-- OPTIONAL PERSONAL ESTIMATE; the lifetime calculator above remains unchanged -->
+        <div class="bg-emerald-950/30 p-4 rounded-xl border border-emerald-500/20 space-y-3">
+          <div>
+            <h3 class="text-sm font-bold text-emerald-300">Your Personal Missed-Prayer Estimate</h3>
+            <p class="text-[11px] opacity-75 mt-1">Use this optional override if your own estimate differs. Enter your total missed prayer units; completed logs are subtracted to show what's left.</p>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <label for="manual-missed-input" class="sr-only">Your total missed prayer units</label>
+            <input type="number" min="0" step="1" id="manual-missed-input" inputmode="numeric" placeholder="Enter your total missed prayer units" class="min-w-0 flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+            <button onclick="applyManualMissedOverride()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-4 py-2 rounded-lg text-sm">Use my estimate</button>
+            <button onclick="clearManualMissedOverride()" id="clear-manual-override" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm">Use calculator</button>
+          </div>
+          <p id="manual-override-status" aria-live="polite" class="text-[11px] text-emerald-300"></p>
+          <p class="text-[11px] leading-relaxed opacity-70">How the engine works: "The calculation engine counts 6 prayers daily (including Witr separately), where each prayer slot equals 1 unit (total 6 units per day, rather than breaking them down by traditional Rak'ah counts like 2 for Fajr, 4 for Dhuhr, etc.)."</p>
+        </div>
         <!-- ANIMATED CIRCULAR PROGRESS RING & OVERALL BAR -->
         <div class="flex flex-col md:flex-row items-center gap-6 pt-2">
           <!-- Animated Circular Ring Indicator -->
@@ -406,7 +442,7 @@
           </div>
           
           <!-- QUICK-LOG "LOG WHOLE DAY" BUTTON -->
-          <button onclick="logWholeDayQuick()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold text-xs px-4 py-2 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+          <button id="log-whole-day-btn" type="button" onclick="logWholeDayQuick()" class="relative z-[51] touch-manipulation bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold text-xs px-4 py-2 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-bolt"></i> Log Whole Day (+6 Qadha)
           </button>
         </div>
@@ -415,13 +451,13 @@
     </section>
 
     <!-- TAB 2: HALL OF FAME LEADERBOARD -->
-    <section id="content-leaderboard" class="hidden space-y-6">
-      <div class="flex justify-between items-center">
+    <section id="content-leaderboard" role="tabpanel" aria-labelledby="tab-leaderboard" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h2 class="text-xl font-bold">Weekly Hall of Fame</h2>
-        <span class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Live Global Updates</span>
+        <span id="leaderboard-sync-status" role="status" aria-live="polite" class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Community examples · sample streaks advance daily · syncing live members…</span>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
-        <table class="w-full text-left text-sm">
+        <div class="responsive-table"><table class="w-full text-left text-sm">
           <thead class="bg-gray-800/60 opacity-80 border-b border-gray-700">
             <tr>
               <th class="p-4">Rank</th>
@@ -431,12 +467,12 @@
             </tr>
           </thead>
           <tbody id="leaderboard-body" class="divide-y divide-gray-800"></tbody>
-        </table>
+        </table></div>
       </div>
     </section>
 
     <!-- TAB 3: PROGRESS, HEATMAP & DATA BACKUP -->
-    <section id="content-report" class="hidden space-y-6">
+    <section id="content-report" role="tabpanel" aria-labelledby="tab-report" class="hidden space-y-6">
       
       <!-- VISUAL STREAK CALENDAR (30-DAY HEATMAP GRID) -->
       <div class="glass-card p-6 rounded-xl space-y-4">
@@ -491,7 +527,7 @@
     </section>
 
     <!-- TAB 4: ABOUT CEO, WHY TADARAK, FAQs & ASK CEO -->
-    <section id="content-about" class="hidden space-y-8">
+    <section id="content-about" role="tabpanel" aria-labelledby="tab-about" class="hidden space-y-8">
       <div class="grid md:grid-cols-3 gap-6">
         
         <!-- CEO PROFILE CARD -->
@@ -508,6 +544,9 @@
           <blockquote class="text-xs italic opacity-80 border-l-2 border-emerald-500 pl-3 text-left">
             "All men dream: but not equally. Those who dream by night in the dusty recesses of their minds wake in the day to find that it was vanity: but the dreamers of the day are dangerous men, for they may act their dream with open eyes, to make it possible. This I did"
           </blockquote>
+          <a href="https://callmedrake.vercel.app" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-950/30">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Discover More About the Founder
+          </a>
         </div>
 
         <!-- STORY SECTION -->
@@ -533,7 +572,19 @@
             </details>
             <details class="bg-gray-800/50 p-3 rounded-lg">
               <summary class="font-semibold cursor-pointer text-emerald-400">How do Streak Freezes work?</summary>
-              <p class="mt-2 opacity-80 text-xs">If you miss logging for a day, a Streak Freeze is used automatically from your balance to protect your consecutive streak.</p>
+              <p class="mt-2 opacity-80 text-xs">If you miss a full-day log, your current streak freezes for the next day instead of immediately resetting. Log all six prayer slots during that grace day to unfreeze and continue; otherwise the streak resets.</p>
+            </details>
+            <details class="bg-gray-800/50 p-3 rounded-lg">
+              <summary class="font-semibold cursor-pointer text-emerald-400">Can I use my own Qadha estimate?</summary>
+              <p class="mt-2 opacity-80 text-xs">Yes. On Home, enter your own total missed prayer-unit estimate and select “Use my estimate.” The total obligation uses your figure and completed logs are subtracted for the remaining count; clear the override to return to the age-based calculator.</p>
+            </details>
+            <details class="bg-gray-800/50 p-3 rounded-lg">
+              <summary class="font-semibold cursor-pointer text-emerald-400">What counts as a prayer unit in Tadarak?</summary>
+              <p class="mt-2 opacity-80 text-xs">The calculator counts six daily slots: five Fard prayers plus Witr as a separate slot. Each slot is one unit, not the number of traditional Rak'ahs within that prayer.</p>
+            </details>
+            <details class="bg-gray-800/50 p-3 rounded-lg">
+              <summary class="font-semibold cursor-pointer text-emerald-400">How can I stay consistent and protect my progress?</summary>
+              <p class="mt-2 opacity-80 text-xs">Choose a manageable daily pace, log each prayer as you complete it, and export a backup from Progress & Certificate from time to time. Tariq can offer a daily in-app reminder; browser notifications are optional.</p>
             </details>
           </div>
         </div>
@@ -559,21 +610,24 @@
   <!-- INTERACTIVE MASCOT "TARIQ" FLOATING CONTAINER (ENHANCED FEATURES) -->
   <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end space-y-2 pointer-events-none">
     <!-- Notification Toast Speech Bubble with Mood Badge & Close Controls -->
-    <div id="mascot-speech" class="bg-gray-900 border border-emerald-500 text-xs text-white p-3 rounded-2xl shadow-2xl max-w-xs pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-2 flex flex-col space-y-1.5 relative">
+    <div id="mascot-speech" class="bg-gray-900 border border-emerald-500 text-xs text-white p-3 rounded-2xl shadow-2xl max-w-xs pointer-events-none transform transition-all duration-300 opacity-0 translate-y-2 flex flex-col space-y-1.5 relative">
       <div class="flex items-center justify-between gap-2 border-b border-gray-800 pb-1">
         <span id="tariq-mood-badge" class="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
           😊 Happy Tariq
         </span>
-        <button onclick="hideMascotSpeech()" class="text-gray-400 hover:text-white text-xs px-1">✕</button>
+        <button onclick="hideMascotSpeech()" class="pointer-events-auto text-gray-400 hover:text-white text-xs px-1">✕</button>
       </div>
       <p id="mascot-msg" class="leading-relaxed">Assalamu Alaikum! I'm Tariq. Let's complete our Qadha prayers today! 🦅</p>
       <!-- Quick Action Buttons Inside Speech Bubble -->
       <div class="flex gap-1.5 pt-1">
-        <button onclick="triggerTariqHadith()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-emerald-400 font-semibold transition">
+        <button onclick="triggerTariqHadith()" class="pointer-events-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-emerald-400 font-semibold transition">
           📜 Islamic Quote
         </button>
-        <button onclick="triggerTariqMotivation()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-yellow-400 font-semibold transition">
+        <button onclick="triggerTariqMotivation()" class="pointer-events-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-yellow-400 font-semibold transition">
           ⚡ Motivate Me
+        </button>
+        <button id="reminder-enable-btn" onclick="enableTariqNotifications()" class="pointer-events-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-sky-300 font-semibold transition">
+          <i class="fa-regular fa-bell"></i> Daily reminder
         </button>
       </div>
     </div>
@@ -629,6 +683,17 @@
     </div>
   </div>
 
+  <!-- STREAK FREEZE NOTICE -->
+  <div id="streak-modal" role="dialog" aria-modal="true" aria-labelledby="streak-modal-title" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-[60]">
+    <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4 border border-sky-400/40">
+      <div class="w-12 h-12 rounded-full bg-sky-400/10 text-sky-300 flex items-center justify-center mx-auto"><i class="fa-solid fa-snowflake text-xl"></i></div>
+      <h3 id="streak-modal-title" class="text-xl font-bold text-white text-center">Your streak is frozen!</h3>
+      <p class="text-sm opacity-80 text-center">Your streak is frozen! Log in your full day of prayers to unfreeze your streak—otherwise, it will reset.</p>
+      <button onclick="logWholeDayQuick()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold py-3 rounded-xl">Log my full day</button>
+      <button onclick="closeStreakModal()" class="w-full text-xs opacity-70 hover:opacity-100">Maybe later</button>
+    </div>
+  </div>
+
   <!-- SIGN IN & PROFILE CREATION MODAL -->
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
@@ -674,13 +739,47 @@
       { name: "Bilal Siddiqui", xp: 980, streak: 12, email: "bilal.s@tadarak.org" },
       { name: "Mariam Khan", xp: 750, streak: 9, email: "mariam.k@tadarak.org" },
       { name: "Fatima Nur", xp: 430, streak: 5, email: "fatima.n@tadarak.org" },
-      { name: "Hamza Al-Ghazali", xp: 210, streak: 3, email: "hamza.g@tadarak.org" }
+      { name: "Hamza Al-Ghazali", xp: 210, streak: 3, email: "hamza.g@tadarak.org" },
+      { name: "Aisha Rahman", xp: 610, streak: 7, email: "aisha.r@tadarak.org" },
+      { name: "Omar Abdallah", xp: 340, streak: 4, email: "omar.a@tadarak.org" }
     ];
 
     let currentUser = JSON.parse(localStorage.getItem('tadarak_session')) || null;
     let liveFirestoreUsers = [];
+    let leaderboardUnsubscribe = null;
 
-    let todayStr = new Date().toISOString().split('T')[0];
+    const localDateString = (date = new Date()) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    let todayStr = localDateString();
+    function dayNumber(dateStr) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+    }
+
+    function getFictionalCommunityMembers() {
+      const storageKey = 'tadarak_fictional_community_streaks';
+      let state;
+      try { state = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch (error) { state = null; }
+      if (!state || !state.date || !state.streaks) {
+        state = {
+          date: todayStr,
+          streaks: Object.fromEntries(fictionalCommunityMembers.map(member => [member.email, member.streak]))
+        };
+      }
+      const daysPassed = Math.max(0, dayNumber(todayStr) - dayNumber(state.date));
+      fictionalCommunityMembers.forEach(member => {
+        if (!Number.isFinite(Number(state.streaks[member.email]))) state.streaks[member.email] = member.streak;
+        if (daysPassed > 0) state.streaks[member.email] = Number(state.streaks[member.email]) + daysPassed;
+      });
+      if (dayNumber(todayStr) >= dayNumber(state.date)) state.date = todayStr;
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      return fictionalCommunityMembers.map(member => ({ ...member, streak: Number(state.streaks[member.email]) }));
+    }
+
     let dailyLogs = JSON.parse(localStorage.getItem('tadarak_logs')) || [
       { date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } }
     ];
@@ -725,7 +824,10 @@
       }
     }
 
+    let tariqSpeechTimer = null;
     function showMascotSpeech(text, autoHideMs = 6000) {
+      if (tariqSpeechTimer) clearTimeout(tariqSpeechTimer);
+      tariqSpeechTimer = null;
       const speech = document.getElementById('mascot-speech');
       const msg = document.getElementById('mascot-msg');
       msg.innerText = text;
@@ -733,13 +835,16 @@
       speech.classList.add('opacity-100', 'translate-y-0');
 
       if (autoHideMs > 0) {
-        setTimeout(() => {
+        tariqSpeechTimer = setTimeout(() => {
+          tariqSpeechTimer = null;
           hideMascotSpeech();
         }, autoHideMs);
       }
     }
 
     function hideMascotSpeech() {
+      if (tariqSpeechTimer) clearTimeout(tariqSpeechTimer);
+      tariqSpeechTimer = null;
       const speech = document.getElementById('mascot-speech');
       speech.classList.remove('opacity-100', 'translate-y-0');
       speech.classList.add('opacity-0', 'translate-y-2');
@@ -779,30 +884,67 @@
       showMascotSpeech(randomMotiv, 7000);
     }
 
+    function dailyReminderText() {
+      const prompts = [
+        "Tariq here! A small step today keeps your Qadha journey moving. Log your prayers when you can.",
+        "Psst—your future self will thank you for today's consistency. Tariq is cheering you on!",
+        "One prayer at a time, friend. Tariq believes in your steady progress!",
+        "A gentle nudge from Tariq: take a moment to log today's prayers and celebrate your effort."
+      ];
+      return prompts[Math.floor(Math.random() * prompts.length)];
+    }
+
+    function enableTariqNotifications() {
+      if (!('Notification' in window)) {
+        showMascotSpeech("This browser doesn't support notifications, but Tariq will still leave a daily in-app reminder when you visit.");
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          localStorage.setItem('tadarak_notifications', 'enabled');
+          document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Reminders on';
+          showMascotSpeech("Daily reminders are on! Tariq will send a gentle nudge while this app is open.");
+          maybeSendDailyReminder();
+        } else {
+          showMascotSpeech("No worries! Tariq will keep the daily reminder inside the app whenever you visit.");
+        }
+      });
+    }
+
+    function maybeSendDailyReminder() {
+      const lastPrompt = localStorage.getItem('tadarak_last_mascot_prompt');
+      if (lastPrompt === todayStr) return;
+      localStorage.setItem('tadarak_last_mascot_prompt', todayStr);
+      const text = dailyReminderText();
+      if (localStorage.getItem('tadarak_notifications') === 'enabled' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('A reminder from Tariq', { body: text, tag: `tadarak-${todayStr}` });
+      } else {
+        showMascotSpeech(text, 9000);
+      }
+    }
+
     // --- EYE TRACKING FOR TARIQ ---
-    document.addEventListener('mousemove', (e) => {
-      const pupilL = document.getElementById('pupil-left');
-      const pupilR = document.getElementById('pupil-right');
-      if (!pupilL || !pupilR) return;
-
-      const rectL = pupilL.getBoundingClientRect();
-      const rectR = pupilR.getBoundingClientRect();
-
-      const calcAngle = (rect) => {
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
-        const angle = Math.atan2(dy, dx);
-        const dist = Math.min(2.5, Math.hypot(dx, dy) / 25);
-        return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
-      };
-
-      const offsetL = calcAngle(rectL);
-      const offsetR = calcAngle(rectR);
-
-      pupilL.style.transform = `translate(${offsetL.x}px, ${offsetL.y}px)`;
-      pupilR.style.transform = `translate(${offsetR.x}px, ${offsetR.y}px)`;
+    document.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const avatarRect = document.getElementById('mascot-avatar-container').getBoundingClientRect();
+      if (!avatarRect.width || !avatarRect.height) return;
+      const eyeTargets = [
+        { id: 'pupil-left', x: 38, y: 45 },
+        { id: 'pupil-right', x: 62, y: 45 }
+      ];
+      eyeTargets.forEach(eye => {
+        const pupil = document.getElementById(eye.id);
+        const eyeX = avatarRect.left + avatarRect.width * eye.x / 100;
+        const eyeY = avatarRect.top + avatarRect.height * eye.y / 100;
+        const dx = e.clientX - eyeX;
+        const dy = e.clientY - eyeY;
+        const distance = Math.hypot(dx, dy);
+        const travel = Math.min(2.8, distance / 35);
+        const x = distance ? dx / distance * travel : 0;
+        const y = distance ? dy / distance * travel : 0;
+        pupil.setAttribute('cx', String(eye.x + x));
+        pupil.setAttribute('cy', String(eye.y + y));
+      });
     });
 
     // --- AUDIO SYSTEM ---
@@ -818,38 +960,64 @@
 
     function playClickSound() {
       if (!audioEnabled) return;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1); // A5
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1); // A5
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      } catch (error) {
+        console.debug('Audio feedback unavailable; continuing without sound.', error);
+      }
     }
 
     // --- NAVIGATION TABS ---
     function switchTab(tabName) {
+      if (!['daily', 'leaderboard', 'report', 'about'].includes(tabName)) return;
       ['daily', 'leaderboard', 'report', 'about'].forEach(t => {
         document.getElementById(`content-${t}`).classList.add('hidden');
         const btn = document.getElementById(`tab-${t}`);
         if (btn) {
+          btn.setAttribute('aria-selected', 'false');
+          btn.tabIndex = -1;
           btn.className = "pb-3 border-b-2 border-transparent text-gray-400 hover:text-white";
         }
       });
       document.getElementById(`content-${tabName}`).classList.remove('hidden');
       const activeBtn = document.getElementById(`tab-${tabName}`);
       if (activeBtn) {
+        activeBtn.setAttribute('aria-selected', 'true');
+        activeBtn.tabIndex = 0;
         activeBtn.className = "pb-3 border-b-2 border-emerald-500 text-emerald-400 font-semibold";
       }
     }
 
     // --- CORE LOGIC & INITIALIZATION ---
     function initApp() {
+      document.querySelectorAll('#tab-navigation [data-tab]').forEach(button => {
+        if (button.dataset.tabHandlersReady === 'true') return;
+        button.dataset.tabHandlersReady = 'true';
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
+        button.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const tabs = Array.from(document.querySelectorAll('#tab-navigation [data-tab]'));
+          const current = tabs.indexOf(button);
+          const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[nextIndex].focus();
+          switchTab(tabs[nextIndex].dataset.tab);
+        });
+      });
       if (!currentUser) {
         currentUser = {
           fullName: "Guest Believer",
@@ -867,11 +1035,26 @@
       updateBadges();
       fetchLeaderboard();
       updateTariqMoodState();
+      const manualValue = localStorage.getItem('tadarak_manual_missed');
+      if (manualValue !== null) document.getElementById('manual-missed-input').value = manualValue;
+      updateManualOverrideStatus();
+      if (localStorage.getItem('tadarak_notifications') === 'enabled') {
+        document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Reminders on';
+      }
+      ensureTodayLog();
+      reconcileStreakForDateChange(true);
+      updateBadges();
+      fetchLeaderboard();
+      startLeaderboardSync();
+      updateTariqMoodState();
+      if (currentUser.streakState === 'frozen') showStreakModal();
+      maybeSendDailyReminder();
+      scheduleMidnightRefresh();
     }
 
     function updateUserStatsUI() {
       document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
-      document.getElementById('user-streak').innerText = `${currentUser.streak} Days`;
+      document.getElementById('user-streak').innerText = `${currentUser.streak} Days${currentUser.streakState === 'frozen' ? ' · Frozen' : ''}`;
       document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
       
       const authSec = document.getElementById('auth-section');
@@ -895,46 +1078,72 @@
       document.getElementById('auth-modal').classList.remove('flex');
     }
 
-   async function handleAuthSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
-  const formData = new FormData(form);
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const name = document.getElementById('auth-name').value.trim();
+      const email = document.getElementById('auth-email').value.trim();
+      const dob = document.getElementById('auth-dob').value;
+      const localUser = currentUser ? { ...currentUser } : {};
+      let remoteUser = {};
 
-  const name = document.getElementById('auth-name').value;
-  const email = document.getElementById('auth-email').value;
-  const dob = document.getElementById('auth-dob').value;
+      // Read first and merge: never replace an existing profile or its local log history.
+      try {
+        const existingDoc = await db.collection('users').doc(email).get();
+        if (existingDoc.exists) remoteUser = existingDoc.data() || {};
+      } catch (error) {
+        console.warn('Could not read the online profile; keeping this device’s saved data.', error);
+      }
+      const savedSession = JSON.parse(localStorage.getItem('tadarak_session') || 'null');
+      const matchingLocalUser = savedSession && savedSession.email === email ? savedSession : localUser;
+      const asCount = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+      currentUser = {
+        ...remoteUser,
+        ...matchingLocalUser,
+        fullName: name || matchingLocalUser.fullName || remoteUser.fullName || 'Tadarak member',
+        email,
+        dob: matchingLocalUser.dob || remoteUser.dob || dob,
+        xp: Math.max(asCount(remoteUser.xp), asCount(matchingLocalUser.xp)),
+        streak: Math.max(asCount(remoteUser.streak), asCount(matchingLocalUser.streak)),
+        freezes: matchingLocalUser.freezes ?? remoteUser.freezes ?? 1
+      };
 
-  currentUser.fullName = name;
-  currentUser.email = email;
-  currentUser.dob = dob;
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+      closeAuthModal();
+      updateUserStatsUI();
+      calculateQadhaMetrics();
 
-  localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-  closeAuthModal();
-  updateUserStatsUI();
-  calculateQadhaMetrics();
-  
-  // 1. Silent Formspree background submission
-  try {
-    await fetch(form.action, {
-      method: form.method,
-      body: formData,
-      headers: { 'Accept': 'application/json' }
-    });
-  } catch (error) {
-    console.error('Formspree sync error:', error);
-  }
+      // Keep the existing contact submission; local progress has already been saved above.
+      try {
+        await fetch(form.action, {
+          method: form.method,
+          body: formData,
+          headers: { 'Accept': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Formspree sync error:', error);
+      }
 
-  // 2. Sync user profile to Firestore
-  db.collection("users").doc(email).set({
-    fullName: name,
-    email: email,
-    xp: currentUser.xp,
-    streak: currentUser.streak,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  showMascotSpeech(`Welcome, ${name}! Your profile is ready and synced! 🦅`);
-}
+      // Merge online fields so unrelated/older stored user data is not deleted.
+      try {
+        await db.collection('users').doc(email).set({
+          fullName: currentUser.fullName,
+          email,
+          xp: currentUser.xp,
+          streak: currentUser.streak,
+          lastFullDay: currentUser.lastFullDay ?? null,
+          streakState: currentUser.streakState ?? 'active',
+          freezes: currentUser.freezes,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your profile and progress are synced across devices! 🦅`);
+      } catch (error) {
+        console.warn('Online sync unavailable; your existing progress remains saved on this device.', error);
+        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your progress is saved on this device; online sync will retry when available.`);
+      }
+      fetchLeaderboard();
+    }
 
 function logout() {
   localStorage.removeItem('tadarak_session');
@@ -942,7 +1151,47 @@ function logout() {
   location.reload();
 }
     // --- DAILY QADHA LOGGING ---
+    function ensureTodayLog() {
+      todayStr = localDateString();
+      if (!dailyLogs.some(entry => entry.date === todayStr)) {
+        dailyLogs.unshift({ date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } });
+        localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+      }
+      dailyLogs.sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    let midnightTimer = null;
+    function scheduleMidnightRefresh() {
+      if (midnightTimer) clearTimeout(midnightTimer);
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+      midnightTimer = setTimeout(() => refreshForNewDate(), nextMidnight - now);
+    }
+
+    function refreshForNewDate() {
+      const previousDate = todayStr;
+      todayStr = localDateString();
+      if (todayStr !== previousDate) {
+        ensureTodayLog();
+        reconcileStreakForDateChange(true);
+        document.getElementById('cert-date').value = todayStr;
+        renderDailyLogs();
+        calculateQadhaMetrics();
+        renderHeatmap();
+        fetchLeaderboard();
+        saveData();
+        maybeSendDailyReminder();
+      }
+      scheduleMidnightRefresh();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshForNewDate();
+    });
+    window.addEventListener('focus', refreshForNewDate);
+
     function renderDailyLogs() {
+      ensureTodayLog();
       const container = document.getElementById('qadha-log-container');
       container.innerHTML = '';
 
@@ -1004,6 +1253,8 @@ function logout() {
     }
 
     function logWholeDayQuick() {
+      if (localDateString() !== todayStr) refreshForNewDate();
+      ensureTodayLog();
       playClickSound();
       let todayEntry = dailyLogs.find(l => l.date === todayStr);
       if (!todayEntry) {
@@ -1035,9 +1286,70 @@ function logout() {
       updateTariqMoodState();
     }
 
+    function dateOffset(dateStr, days) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + days);
+      return localDateString(date);
+    }
+
+    function isFullDay(logEntry) {
+      return !!logEntry && prayersList.every(prayer => logEntry.logged && logEntry.logged[prayer] === true);
+    }
+
+    function closeStreakModal() {
+      document.getElementById('streak-modal').classList.add('hidden');
+      document.getElementById('streak-modal').classList.remove('flex');
+    }
+
+    function showStreakModal() {
+      const modal = document.getElementById('streak-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      showMascotSpeech("Your streak is frozen! Log a full day today and Tariq will help you keep it going.", 0);
+    }
+
+    function reconcileStreakForDateChange(notify) {
+      const fullDates = dailyLogs.filter(isFullDay).map(entry => entry.date).sort();
+      if (!currentUser.lastFullDay && fullDates.length) currentUser.lastFullDay = fullDates[fullDates.length - 1];
+      const last = currentUser.lastFullDay;
+      if (!last || !currentUser.streak) return;
+      const yesterday = dateOffset(todayStr, -1);
+      const dayBeforeYesterday = dateOffset(todayStr, -2);
+      if (last === dayBeforeYesterday) {
+        if (currentUser.streakState !== 'frozen' || currentUser.freezeDate !== yesterday) {
+          currentUser.streakState = 'frozen';
+          currentUser.freezeDate = yesterday;
+          if (notify) showStreakModal();
+        }
+      } else if (last < dayBeforeYesterday) {
+        currentUser.streak = 0;
+        currentUser.streakState = 'active';
+        currentUser.freezeDate = null;
+        currentUser.lastFullDay = null;
+        if (notify) showMascotSpeech("The frozen streak has reset, but a fresh one can begin today. Tariq is rooting for you!");
+      }
+      updateUserStatsUI();
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+    }
+
     function updateStreak() {
-      const activeDays = dailyLogs.filter(l => Object.values(l.logged).some(val => val === true)).length;
-      currentUser.streak = activeDays;
+      const todayEntry = dailyLogs.find(entry => entry.date === todayStr);
+      if (!isFullDay(todayEntry)) return;
+      const previousFullDay = currentUser.lastFullDay;
+      if (currentUser.streakState === 'frozen' && currentUser.freezeDate === dateOffset(todayStr, -1)) {
+        currentUser.streak = (Number(currentUser.streak) || 0) + 1;
+      } else if (previousFullDay === dateOffset(todayStr, -1)) {
+        currentUser.streak = (Number(currentUser.streak) || 0) + 1;
+      } else if (!previousFullDay || currentUser.streak === 0) {
+        currentUser.streak = 1;
+      } else if (previousFullDay !== todayStr) {
+        currentUser.streak = 1;
+      }
+      currentUser.lastFullDay = todayStr;
+      currentUser.streakState = 'active';
+      currentUser.freezeDate = null;
+      closeStreakModal();
     }
 
     function saveData() {
@@ -1046,15 +1358,53 @@ function logout() {
       updateUserStatsUI();
       
       if (currentUser.email !== "guest@tadarak.org") {
-        db.collection("users").doc(currentUser.email).set({
+        db.collection('users').doc(currentUser.email).set({
+          fullName: currentUser.fullName || 'Tadarak member',
+          email: currentUser.email,
           xp: currentUser.xp,
           streak: currentUser.streak,
+          lastFullDay: currentUser.lastFullDay ?? null,
+          streakState: currentUser.streakState ?? 'active',
+          freezes: currentUser.freezes,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        }, { merge: true }).catch(error => {
+          console.warn('Online leaderboard sync unavailable; local progress is preserved.', error);
+        });
       }
     }
 
     // --- CALCULATOR ENGINE ---
+    function applyManualMissedOverride() {
+      const input = document.getElementById('manual-missed-input');
+      if (!input.value || !Number.isSafeInteger(Number(input.value)) || Number(input.value) < 0) {
+        input.setCustomValidity('Enter a whole number of 0 or more.');
+        input.reportValidity();
+        input.setCustomValidity('');
+        return;
+      }
+      localStorage.setItem('tadarak_manual_missed', String(Number(input.value)));
+      updateManualOverrideStatus();
+      calculateQadhaMetrics();
+      showMascotSpeech("Got it! Your personal estimate is now driving the remaining count and completion projection.");
+    }
+
+    function clearManualMissedOverride() {
+      localStorage.removeItem('tadarak_manual_missed');
+      document.getElementById('manual-missed-input').value = '';
+      updateManualOverrideStatus();
+      calculateQadhaMetrics();
+      showMascotSpeech("Back to the age-based calculator estimate. Your personal override has been cleared.");
+    }
+
+    function updateManualOverrideStatus() {
+      const value = localStorage.getItem('tadarak_manual_missed');
+      const status = document.getElementById('manual-override-status');
+      const clearButton = document.getElementById('clear-manual-override');
+      const totalCompleted = dailyLogs.reduce((sum, entry) => sum + Object.values(entry.logged || {}).filter(Boolean).length, 0);
+      if (status) status.textContent = value === null ? 'Using the age-based calculator estimate.' : `Personal total active: ${Number(value).toLocaleString()} units; ${Math.max(0, Number(value) - totalCompleted).toLocaleString()} remaining after logs.`;
+      if (clearButton) clearButton.classList.toggle('hidden', value === null);
+    }
+
     function calculateQadhaMetrics() {
       const dobStr = currentUser.dob || "2000-01-01";
       const dob = new Date(dobStr);
@@ -1072,19 +1422,24 @@ function logout() {
         });
       });
 
-      let remaining = Math.max(0, totalObligation - totalCompleted);
+      const engineRemaining = Math.max(0, totalObligation - totalCompleted);
+      const manualOverride = localStorage.getItem('tadarak_manual_missed');
+      const hasManualTotal = manualOverride !== null && Number.isSafeInteger(Number(manualOverride)) && Number(manualOverride) >= 0;
+      const displayTotalObligation = hasManualTotal ? Number(manualOverride) : totalObligation;
+      const remaining = Math.max(0, displayTotalObligation - totalCompleted);
 
       const paceVal = parseInt(document.getElementById('pace-selector').value) || 6;
       let daysToComplete = Math.ceil(remaining / paceVal);
       let completionDate = new Date();
       completionDate.setDate(completionDate.getDate() + daysToComplete);
 
-      document.getElementById('calc-total').innerText = totalObligation.toLocaleString();
+      document.getElementById('calc-total').innerText = displayTotalObligation.toLocaleString();
+      document.getElementById('calc-total-note').innerText = hasManualTotal ? 'Personal total (logged + remaining)' : 'Prayers (Fard + Witr)';
       document.getElementById('calc-completed').innerText = totalCompleted.toLocaleString();
       document.getElementById('calc-remaining').innerText = remaining.toLocaleString();
-      document.getElementById('calc-completion-date').innerText = remaining > 0 ? completionDate.toISOString().split('T')[0] : "Completed!";
+      document.getElementById('calc-completion-date').innerText = remaining > 0 ? localDateString(completionDate) : "Completed!";
 
-      let percent = totalObligation > 0 ? ((totalCompleted / totalObligation) * 100).toFixed(1) : 0;
+      let percent = displayTotalObligation > 0 ? Math.min(100, (totalCompleted / displayTotalObligation) * 100).toFixed(1) : (totalCompleted > 0 ? 100 : 0);
       document.getElementById('calc-percent').innerText = `${percent}%`;
       document.getElementById('ring-percent-text').innerText = `${percent}%`;
       document.getElementById('calc-progress-bar').style.width = `${percent}%`;
@@ -1167,7 +1522,7 @@ function logout() {
       for (let i = 29; i >= 0; i--) {
         let d = new Date();
         d.setDate(d.getDate() - i);
-        let dStr = d.toISOString().split('T')[0];
+        let dStr = localDateString(d);
 
         let log = dailyLogs.find(l => l.date === dStr);
         let count = 0;
@@ -1188,39 +1543,90 @@ function logout() {
       }
     }
 
-    // --- LEADERBOARD ---
-    function fetchLeaderboard() {
-      let users = [...fictionalCommunityMembers];
-      
-      if (currentUser.email !== "guest@tadarak.org") {
-        let existingIdx = users.findIndex(u => u.email === currentUser.email);
-        if (existingIdx >= 0) users[existingIdx] = currentUser;
-        else users.push(currentUser);
+    // --- SHARED LEADERBOARD ---
+    function setLeaderboardSyncStatus(connected, detail = '') {
+      const status = document.getElementById('leaderboard-sync-status');
+      if (!status) return;
+      if (connected) {
+        const count = liveFirestoreUsers.filter(user => user.email !== 'guest@tadarak.org').length;
+        status.textContent = `Community examples · sample streaks advance daily · ${count} live member${count === 1 ? '' : 's'}${detail ? ` · ${detail}` : ''}`;
       } else {
-        users.push(currentUser);
+        status.textContent = `Community examples · sample streaks advance daily · cross-device sync unavailable${detail ? ` · ${detail}` : ''}`;
       }
+    }
 
-      users.sort((a, b) => b.xp - a.xp);
+    function startLeaderboardSync() {
+      if (leaderboardUnsubscribe) return;
+      try {
+        leaderboardUnsubscribe = db.collection('users').onSnapshot(snapshot => {
+          liveFirestoreUsers = snapshot.docs.map(doc => {
+            const data = doc.data() || {};
+            const email = String(data.email || doc.id || '').trim();
+            if (!email || email === 'guest@tadarak.org') return null;
+            const xp = Number(data.xp);
+            const streak = Number(data.streak);
+            return {
+              fullName: String(data.fullName || data.name || 'Tadarak member'),
+              email,
+              xp: Number.isFinite(xp) ? xp : 0,
+              streak: Number.isFinite(streak) ? streak : 0
+            };
+          }).filter(Boolean);
+          setLeaderboardSyncStatus(true);
+          fetchLeaderboard();
+        }, error => {
+          console.warn('Cross-device leaderboard sync unavailable.', error);
+          setLeaderboardSyncStatus(false);
+          fetchLeaderboard();
+        });
+      } catch (error) {
+        console.warn('Could not start the shared leaderboard listener.', error);
+        setLeaderboardSyncStatus(false);
+      }
+    }
 
+    function escapeLeaderboardText(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+
+    function fetchLeaderboard() {
+      const users = getFictionalCommunityMembers();
+      liveFirestoreUsers.forEach(remoteUser => {
+        const existingIdx = users.findIndex(user => String(user.email).toLowerCase() === remoteUser.email.toLowerCase());
+        if (existingIdx >= 0) users[existingIdx] = { ...users[existingIdx], ...remoteUser };
+        else users.push(remoteUser);
+      });
+
+      const currentEmail = currentUser.email || 'guest@tadarak.org';
+      let currentIdx = users.findIndex(user => String(user.email).toLowerCase() === currentEmail.toLowerCase());
+      const currentRemote = liveFirestoreUsers.find(user => user.email.toLowerCase() === currentEmail.toLowerCase());
+      const currentForBoard = { ...(currentIdx >= 0 ? users[currentIdx] : {}), ...currentUser };
+      if (currentRemote) {
+        currentForBoard.xp = Math.max(Number(currentRemote.xp) || 0, Number(currentUser.xp) || 0);
+        currentForBoard.streak = Math.max(Number(currentRemote.streak) || 0, Number(currentUser.streak) || 0);
+      }
+      if (currentIdx >= 0) users[currentIdx] = currentForBoard;
+      else users.push(currentForBoard);
+
+      users.sort((a, b) => (Number(b.xp) || 0) - (Number(a.xp) || 0) || String(a.fullName || a.name || '').localeCompare(String(b.fullName || b.name || '')));
       const tbody = document.getElementById('leaderboard-body');
       tbody.innerHTML = '';
 
-      users.forEach((u, idx) => {
-        const isUser = u.email === currentUser.email;
-        if (isUser) {
-          document.getElementById('user-rank').innerText = `#${idx + 1}`;
-        }
-
+      users.forEach((user, idx) => {
+        const isUser = String(user.email).toLowerCase() === currentEmail.toLowerCase();
+        if (isUser) document.getElementById('user-rank').innerText = `#${idx + 1}`;
         const tr = document.createElement('tr');
-        tr.className = isUser ? "bg-emerald-500/10 font-bold border-l-4 border-emerald-500" : "hover:bg-gray-800/30";
+        tr.className = isUser ? 'bg-emerald-500/10 font-bold border-l-4 border-emerald-500' : 'hover:bg-gray-800/30';
         tr.innerHTML = `
           <td class="p-4">#${idx + 1}</td>
           <td class="p-4 flex items-center space-x-2">
-            <span>${u.fullName || u.name}</span>
+            <span>${escapeLeaderboardText(user.fullName || user.name || 'Tadarak member')}</span>
             ${isUser ? '<span class="text-[10px] bg-emerald-500 text-black px-1.5 py-0.5 rounded font-extrabold">YOU</span>' : ''}
           </td>
-          <td class="p-4 text-emerald-400">${u.xp} XP</td>
-          <td class="p-4"><i class="fa-solid fa-fire text-orange-400 mr-1"></i>${u.streak} Days</td>
+          <td class="p-4 text-emerald-400">${Number(user.xp) || 0} XP</td>
+          <td class="p-4"><i class="fa-solid fa-fire text-orange-400 mr-1"></i>${Number(user.streak) || 0} Days</td>
         `;
         tbody.appendChild(tr);
       });
@@ -1317,6 +1723,7 @@ function logout() {
 
     // Run on window initial load
     window.onload = function() {
+      todayStr = localDateString();
       document.getElementById('cert-date').value = todayStr;
       initApp();
     };
