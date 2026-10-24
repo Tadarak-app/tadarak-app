@@ -48,6 +48,7 @@
 
   <!-- Firebase App & Firestore JS SDKs (v9 Compat Mode) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <style>
@@ -584,7 +585,7 @@
             </details>
             <details class="bg-gray-800/50 p-3 rounded-lg">
               <summary class="font-semibold cursor-pointer text-emerald-400">How can I stay consistent and protect my progress?</summary>
-              <p class="mt-2 opacity-80 text-xs">Choose a manageable daily pace, log each prayer as you complete it, and export a backup from Progress & Certificate from time to time. Tariq can offer a daily in-app reminder; browser notifications are optional.</p>
+              <p class="mt-2 opacity-80 text-xs">Choose a manageable daily pace, log each prayer as you complete it, and export a backup from Progress & Certificate from time to time. If enabled, Tariq checks for unlogged prayers at 12:00 noon Pakistan time. Browser reminders require Tadarak to remain open; they cannot run while the browser is closed.</p>
             </details>
           </div>
         </div>
@@ -627,7 +628,7 @@
           ⚡ Motivate Me
         </button>
         <button id="reminder-enable-btn" onclick="enableTariqNotifications()" class="pointer-events-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] px-2 py-1 rounded text-sky-300 font-semibold transition">
-          <i class="fa-regular fa-bell"></i> Daily reminder
+          <i class="fa-regular fa-bell"></i> 12 PM PK reminder
         </button>
       </div>
     </div>
@@ -698,17 +699,18 @@
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs opacity-70 text-center">Profile details will sync to the central Tadarak leaderboard.</p>
+      <p class="text-xs opacity-70 text-center">Sign in securely with a one-time email link. Your private progress syncs to your account; only your display name, XP, and streak appear in the Hall of Fame.</p>
+      <p id="auth-status" role="status" aria-live="polite" class="text-xs text-center text-emerald-300 min-h-4"></p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
-        <input type="text" name="fullName" id="auth-name" placeholder="Full Name" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
-        <input type="email" name="email" id="auth-email" placeholder="Email Address" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+        <input type="text" name="fullName" id="auth-name" placeholder="Full Name" required maxlength="80" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
+        <input type="email" name="email" id="auth-email" placeholder="Email Address" required autocomplete="email" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
         <div>
           <label class="block text-xs opacity-70 mb-1">Date of Birth (For Qadha Engine)</label>
           <input type="date" name="dob" id="auth-dob" required class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-lg text-white text-sm" />
         </div>
         <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2.5 rounded-lg transition text-sm">
-          Save Profile & Start
+          Send secure sign-in link
         </button>
       </form>
       <button onclick="closeAuthModal()" class="w-full text-xs opacity-70 hover:opacity-100">Cancel</button>
@@ -730,6 +732,12 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    auth.languageCode = navigator.language || 'en';
+    const emailLinkStorageKey = 'tadarak_email_for_signin';
+    const pendingProfileStorageKey = 'tadarak_pending_profile';
+    let firebaseAuthUser = null;
+    let authProfileSyncs = new Map();
 
     const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
     
@@ -749,10 +757,11 @@
     let leaderboardUnsubscribe = null;
 
     const localDateString = (date = new Date()) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Karachi', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date);
+      const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
     };
     let todayStr = localDateString();
     function dayNumber(dateStr) {
@@ -884,44 +893,93 @@
       showMascotSpeech(randomMotiv, 7000);
     }
 
+    let noonReminderTimer = null;
+    const PAKISTAN_TIME_ZONE = 'Asia/Karachi';
+
+    function pakistanClockParts(date = new Date()) {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: PAKISTAN_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+      }).formatToParts(date);
+      return Object.fromEntries(parts.map(part => [part.type, part.value]));
+    }
+
     function dailyReminderText() {
-      const prompts = [
-        "Tariq here! A small step today keeps your Qadha journey moving. Log your prayers when you can.",
-        "Psst—your future self will thank you for today's consistency. Tariq is cheering you on!",
-        "One prayer at a time, friend. Tariq believes in your steady progress!",
-        "A gentle nudge from Tariq: take a moment to log today's prayers and celebrate your effort."
-      ];
-      return prompts[Math.floor(Math.random() * prompts.length)];
+      return "Assalamu Alaikum! A gentle reminder from Tariq: you still have today's prayer entries to log. Take a moment to record the prayers you've completed.";
+    }
+
+    function hasUnloggedPrayerToday() {
+      const pakistanToday = localDateString();
+      const todayLog = dailyLogs.find(entry => entry.date === pakistanToday);
+      return !todayLog || prayersList.some(prayer => !todayLog.logged?.[prayer]);
+    }
+
+    function maybeSendDailyReminder() {
+      const clock = pakistanClockParts();
+      if (Number(clock.hour) < 12) return false;
+      const pakistanToday = localDateString();
+      if (!hasUnloggedPrayerToday()) return false;
+      if (localStorage.getItem('tadarak_last_noon_reminder') === pakistanToday) return false;
+      const text = dailyReminderText();
+      const notificationsEnabled = localStorage.getItem('tadarak_notifications') === 'enabled';
+      if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('Tadarak — Tariq’s noon reminder', {
+            body: text,
+            tag: `tadarak-noon-${pakistanToday}`,
+            renotify: false
+          });
+        } catch (error) {
+          showMascotSpeech(text, 12000);
+        }
+      } else {
+        showMascotSpeech(text, 12000);
+      }
+      localStorage.setItem('tadarak_last_noon_reminder', pakistanToday);
+      return true;
+    }
+
+    function msUntilNextPakistanNoon(now = new Date()) {
+      const clock = pakistanClockParts(now);
+      let target = Date.UTC(Number(clock.year), Number(clock.month) - 1, Number(clock.day), 7, 0, 0, 0);
+      if (now.getTime() >= target) target += 24 * 60 * 60 * 1000;
+      return Math.max(1000, target - now.getTime());
+    }
+
+    function schedulePakistanNoonReminder() {
+      if (noonReminderTimer) clearTimeout(noonReminderTimer);
+      const notificationsEnabled = localStorage.getItem('tadarak_notifications') === 'enabled';
+      const permissionGranted = 'Notification' in window && Notification.permission === 'granted';
+      if (notificationsEnabled && permissionGranted) {
+        noonReminderTimer = setTimeout(() => {
+          maybeSendDailyReminder();
+          schedulePakistanNoonReminder();
+        }, msUntilNextPakistanNoon());
+      }
     }
 
     function enableTariqNotifications() {
       if (!('Notification' in window)) {
-        showMascotSpeech("This browser doesn't support notifications, but Tariq will still leave a daily in-app reminder when you visit.");
+        showMascotSpeech("This browser doesn't support notifications. Noon reminders can only be shown while Tadarak is open.");
         return;
       }
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           localStorage.setItem('tadarak_notifications', 'enabled');
-          document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Reminders on';
-          showMascotSpeech("Daily reminders are on! Tariq will send a gentle nudge while this app is open.");
+          document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Noon reminders on';
+          showMascotSpeech("Noon reminders are on for 12:00 Pakistan time. Keep Tadarak open around noon; browsers cannot schedule this page while it is closed.", 10000);
+          schedulePakistanNoonReminder();
           maybeSendDailyReminder();
         } else {
-          showMascotSpeech("No worries! Tariq will keep the daily reminder inside the app whenever you visit.");
+          showMascotSpeech("Notifications weren't allowed. Tariq can still show a reminder in Tadarak while it is open.");
         }
-      });
+      }).catch(() => showMascotSpeech('Could not enable browser notifications. Check this site’s notification permission in your browser settings.'));
     }
 
-    function maybeSendDailyReminder() {
-      const lastPrompt = localStorage.getItem('tadarak_last_mascot_prompt');
-      if (lastPrompt === todayStr) return;
-      localStorage.setItem('tadarak_last_mascot_prompt', todayStr);
-      const text = dailyReminderText();
-      if (localStorage.getItem('tadarak_notifications') === 'enabled' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('A reminder from Tariq', { body: text, tag: `tadarak-${todayStr}` });
-      } else {
-        showMascotSpeech(text, 9000);
-      }
-    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) maybeSendDailyReminder();
+    });
+    window.addEventListener('focus', maybeSendDailyReminder);
 
     // --- EYE TRACKING FOR TARIQ ---
     document.addEventListener('pointermove', (e) => {
@@ -1039,7 +1097,7 @@
       if (manualValue !== null) document.getElementById('manual-missed-input').value = manualValue;
       updateManualOverrideStatus();
       if (localStorage.getItem('tadarak_notifications') === 'enabled') {
-        document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Reminders on';
+        document.getElementById('reminder-enable-btn').innerHTML = '<i class="fa-solid fa-bell"></i> Noon reminders on';
       }
       ensureTodayLog();
       reconcileStreakForDateChange(true);
@@ -1048,6 +1106,7 @@
       startLeaderboardSync();
       updateTariqMoodState();
       if (currentUser.streakState === 'frozen') showStreakModal();
+      schedulePakistanNoonReminder();
       maybeSendDailyReminder();
       scheduleMidnightRefresh();
     }
@@ -1056,19 +1115,33 @@
       document.getElementById('user-xp').innerText = `${currentUser.xp} XP`;
       document.getElementById('user-streak').innerText = `${currentUser.streak} Days${currentUser.streakState === 'frozen' ? ' · Frozen' : ''}`;
       document.getElementById('user-freezes').innerText = `${currentUser.freezes} Left`;
-      
+
       const authSec = document.getElementById('auth-section');
-      if (currentUser.email !== "guest@tadarak.org") {
+      if (firebaseAuthUser && currentUser.uid === firebaseAuthUser.uid) {
         authSec.innerHTML = `
           <div class="flex items-center space-x-2">
-            <span class="text-xs text-gray-300 font-semibold">${currentUser.fullName}</span>
+            <span class="text-xs text-gray-300 font-semibold">${escapeLeaderboardText(currentUser.fullName || 'Tadarak member')}</span>
             <button onclick="logout()" class="text-xs text-red-400 hover:underline">Sign Out</button>
           </div>
         `;
+      } else {
+        const label = currentUser.email && currentUser.email !== 'guest@tadarak.org' ? 'Sign In to Sync' : 'Sign In / Create Account';
+        authSec.innerHTML = `<button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">${label}</button>`;
       }
     }
 
     function openAuthModal() {
+      const pending = readPendingProfile();
+      const name = document.getElementById('auth-name');
+      const email = document.getElementById('auth-email');
+      const dob = document.getElementById('auth-dob');
+      const canPrefillCurrent = currentUser && currentUser.email !== 'guest@tadarak.org';
+      name.value = (pending && pending.fullName) || (canPrefillCurrent ? currentUser.fullName : '') || '';
+      email.value = (pending && pending.email) || (canPrefillCurrent ? currentUser.email : '') || '';
+      dob.value = (pending && pending.dob) || (canPrefillCurrent ? currentUser.dob : '') || '';
+      setAuthStatus(auth.isSignInWithEmailLink(window.location.href)
+        ? 'Confirm the email address that received this sign-in link, then continue.'
+        : 'A one-time secure sign-in link will be sent to your email.');
       document.getElementById('auth-modal').classList.remove('hidden');
       document.getElementById('auth-modal').classList.add('flex');
     }
@@ -1078,78 +1151,318 @@
       document.getElementById('auth-modal').classList.remove('flex');
     }
 
-    async function handleAuthSubmit(e) {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const name = document.getElementById('auth-name').value.trim();
-      const email = document.getElementById('auth-email').value.trim();
-      const dob = document.getElementById('auth-dob').value;
-      const localUser = currentUser ? { ...currentUser } : {};
-      let remoteUser = {};
+    function safeParseJSON(value, fallback = null) {
+      try { return value ? JSON.parse(value) : fallback; } catch (error) { return fallback; }
+    }
 
-      // Read first and merge: never replace an existing profile or its local log history.
-      try {
-        const existingDoc = await db.collection('users').doc(email).get();
-        if (existingDoc.exists) remoteUser = existingDoc.data() || {};
-      } catch (error) {
-        console.warn('Could not read the online profile; keeping this device’s saved data.', error);
+    function readPendingProfile() {
+      return safeParseJSON(localStorage.getItem(pendingProfileStorageKey), null);
+    }
+
+    function sameEmail(a, b) {
+      return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    }
+
+    function setAuthStatus(message, isError = false) {
+      const status = document.getElementById('auth-status');
+      if (!status) return;
+      status.textContent = message;
+      status.className = `text-xs text-center min-h-4 ${isError ? 'text-red-300' : 'text-emerald-300'}`;
+    }
+
+    function mergeDailyLogs(...collections) {
+      const byDate = new Map();
+      collections.flat().forEach(entry => {
+        if (!entry || !/^\d{4}-\d{2}-\d{2}$/.test(String(entry.date || ''))) return;
+        const merged = byDate.get(entry.date) || { date: entry.date, logged: {} };
+        prayersList.forEach(prayer => {
+          merged.logged[prayer] = !!(merged.logged[prayer] || (entry.logged && entry.logged[prayer]));
+        });
+        byDate.set(entry.date, merged);
+      });
+      return Array.from(byDate.values()).sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    function getAuthContinueUrl() {
+      const host = window.location.hostname.toLowerCase();
+      if (host === 'tadarak-app.vercel.app' || host === 'www.tadarak-app.vercel.app') {
+        return `${window.location.origin}${window.location.pathname}`;
       }
-      const savedSession = JSON.parse(localStorage.getItem('tadarak_session') || 'null');
-      const matchingLocalUser = savedSession && savedSession.email === email ? savedSession : localUser;
-      const asCount = value => Number.isFinite(Number(value)) ? Number(value) : 0;
-      currentUser = {
-        ...remoteUser,
-        ...matchingLocalUser,
-        fullName: name || matchingLocalUser.fullName || remoteUser.fullName || 'Tadarak member',
-        email,
-        dob: matchingLocalUser.dob || remoteUser.dob || dob,
-        xp: Math.max(asCount(remoteUser.xp), asCount(matchingLocalUser.xp)),
-        streak: Math.max(asCount(remoteUser.streak), asCount(matchingLocalUser.streak)),
-        freezes: matchingLocalUser.freezes ?? remoteUser.freezes ?? 1
-      };
+      // Sandbox and preview sign-in links return to the production hostname, which is the
+      // Firebase-authorized domain. This also lets a preview-generated link be completed
+      // after the approved production deployment is live.
+      return 'https://tadarak-app.vercel.app/';
+    }
 
-      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-      closeAuthModal();
-      updateUserStatsUI();
-      calculateQadhaMetrics();
-
-      // Keep the existing contact submission; local progress has already been saved above.
+    async function sendProfileToFormspree(form) {
       try {
         await fetch(form.action, {
-          method: form.method,
-          body: formData,
+          method: form.method || 'POST',
+          body: new FormData(form),
           headers: { 'Accept': 'application/json' }
         });
       } catch (error) {
-        console.error('Formspree sync error:', error);
+        console.warn('Profile contact submission unavailable; account progress is unaffected.', error);
       }
-
-      // Merge online fields so unrelated/older stored user data is not deleted.
-      try {
-        await db.collection('users').doc(email).set({
-          fullName: currentUser.fullName,
-          email,
-          xp: currentUser.xp,
-          streak: currentUser.streak,
-          lastFullDay: currentUser.lastFullDay ?? null,
-          streakState: currentUser.streakState ?? 'active',
-          freezes: currentUser.freezes,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your profile and progress are synced across devices! 🦅`);
-      } catch (error) {
-        console.warn('Online sync unavailable; your existing progress remains saved on this device.', error);
-        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your progress is saved on this device; online sync will retry when available.`);
-      }
-      fetchLeaderboard();
     }
 
-function logout() {
-  localStorage.removeItem('tadarak_session');
-  currentUser = null;
-  location.reload();
-}
+    function createPendingProfile(name, email, dob) {
+      return {
+        fullName: name,
+        email,
+        dob,
+        localUser: currentUser ? { ...currentUser } : null,
+        logs: Array.isArray(dailyLogs) ? dailyLogs.map(entry => ({ ...entry, logged: { ...(entry.logged || {}) } })) : [],
+        manualMissed: localStorage.getItem('tadarak_manual_missed'),
+        requestedAt: Date.now()
+      };
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const submitButton = form.querySelector('button[type="submit"]');
+      const name = document.getElementById('auth-name').value.trim().slice(0, 80);
+      const email = document.getElementById('auth-email').value.trim().toLowerCase();
+      const dob = document.getElementById('auth-dob').value;
+      const pending = createPendingProfile(name, email, dob);
+      localStorage.setItem(pendingProfileStorageKey, JSON.stringify(pending));
+      setAuthStatus('');
+      if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Working securely…'; }
+
+      try {
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+          localStorage.setItem(emailLinkStorageKey, email);
+          const credential = await auth.signInWithEmailLink(email, window.location.href);
+          await syncAuthenticatedUser(credential.user);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          localStorage.removeItem(emailLinkStorageKey);
+          await sendProfileToFormspree(form);
+          localStorage.removeItem(pendingProfileStorageKey);
+          closeAuthModal();
+          showMascotSpeech(`Welcome, ${currentUser.fullName}! Your private progress and Hall of Fame entry are synced securely.`);
+        } else if (firebaseAuthUser && sameEmail(firebaseAuthUser.email, email)) {
+          currentUser.fullName = name || currentUser.fullName || 'Tadarak member';
+          currentUser.email = firebaseAuthUser.email;
+          currentUser.uid = firebaseAuthUser.uid;
+          if (dob) currentUser.dob = dob;
+          localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+          await persistAuthenticatedData();
+          await sendProfileToFormspree(form);
+          localStorage.removeItem(pendingProfileStorageKey);
+          closeAuthModal();
+          updateUserStatsUI();
+          calculateQadhaMetrics();
+          fetchLeaderboard();
+          showMascotSpeech('Your profile details are updated and saved to your account.');
+        } else {
+          localStorage.setItem(emailLinkStorageKey, email);
+          await auth.sendSignInLinkToEmail(email, {
+            url: getAuthContinueUrl(),
+            handleCodeInApp: true
+          });
+          await sendProfileToFormspree(form);
+          setAuthStatus('Sign-in link sent. Open the email on this device or enter the same email after opening the link on another device.');
+          showMascotSpeech('Your secure sign-in link is on its way. Check your email to finish creating or connecting your account.');
+        }
+      } catch (error) {
+        console.error('Secure sign-in failed.', error);
+        const messages = {
+          'auth/invalid-email': 'Please enter a valid email address.',
+          'auth/unauthorized-continue-uri': 'The sign-in return domain is not authorized yet. Please try again shortly.',
+          'auth/invalid-continue-uri': 'The sign-in return address is invalid. Please try again.',
+          'auth/operation-not-allowed': 'Email-link sign-in is not enabled yet. Please try again shortly.',
+          'auth/invalid-action-code': 'This sign-in link is invalid or expired. Request a fresh link.',
+          'auth/expired-action-code': 'This sign-in link has expired. Request a fresh link.',
+          'auth/too-many-requests': 'Too many attempts. Please wait a little before requesting another link.'
+        };
+        setAuthStatus(messages[error.code] || 'Sign-in could not be completed. Your existing device data is unchanged; please try again.', true);
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = auth.isSignInWithEmailLink(window.location.href) ? 'Verify & continue' : 'Send secure sign-in link';
+        }
+      }
+    }
+
+    async function performAuthenticatedUserSync(user) {
+      const email = String(user.email || '').trim().toLowerCase();
+      const pending = readPendingProfile();
+      const matchingPending = pending && sameEmail(pending.email, email) ? pending : null;
+      const savedSession = safeParseJSON(localStorage.getItem('tadarak_session'), null);
+      const matchingSession = savedSession && sameEmail(savedSession.email, email) ? savedSession : null;
+      const guestSession = savedSession && savedSession.email === 'guest@tadarak.org' ? savedSession : null;
+      const pendingLocal = matchingPending && matchingPending.localUser ? matchingPending.localUser : null;
+      const pendingBelongsToUser = pendingLocal && (sameEmail(pendingLocal.email, email) || pendingLocal.email === 'guest@tadarak.org');
+      const localBelongsToUser = !!matchingSession || !!guestSession || !!(matchingPending && pendingBelongsToUser);
+      const localUser = (matchingPending && pendingBelongsToUser ? pendingLocal : null) || matchingSession || guestSession || {};
+      let remoteUser = {};
+      let legacyUser = {};
+
+      try {
+        const profileSnapshot = await db.collection('users').doc(user.uid).get();
+        if (profileSnapshot.exists) remoteUser = profileSnapshot.data() || {};
+      } catch (error) {
+        console.warn('Could not read the account profile yet; local data is preserved.', error);
+      }
+      try {
+        const legacySnapshot = await db.collection('users').where('email', '==', user.email).limit(1).get();
+        if (!legacySnapshot.empty) legacyUser = legacySnapshot.docs[0].data() || {};
+      } catch (error) {
+        // The new rules allow verified users to read only their own matching legacy record.
+        console.warn('Legacy profile lookup unavailable; retaining all local data.', error);
+      }
+
+      const remoteLogs = mergeDailyLogs(legacyUser.logs || [], remoteUser.logs || []);
+      const localLogs = localBelongsToUser
+        ? (matchingPending && pendingBelongsToUser ? matchingPending.logs || [] : dailyLogs)
+        : [];
+      dailyLogs = mergeDailyLogs(remoteLogs, localLogs);
+      if (!dailyLogs.length) {
+        dailyLogs = [{ date: todayStr, logged: { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false, Witr: false } }];
+      }
+
+      const asCount = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+      const mergedRemote = { ...legacyUser, ...remoteUser };
+      const fallbackName = matchingPending && matchingPending.fullName || localUser.fullName || mergedRemote.fullName || 'Tadarak member';
+      currentUser = {
+        ...mergedRemote,
+        ...localUser,
+        uid: user.uid,
+        fullName: String(fallbackName).slice(0, 80),
+        email: user.email,
+        dob: (matchingPending && matchingPending.dob) || localUser.dob || mergedRemote.dob || '2000-01-01',
+        xp: Math.max(asCount(mergedRemote.xp), asCount(localUser.xp)),
+        streak: Math.max(asCount(mergedRemote.streak), asCount(localUser.streak)),
+        freezes: Math.max(0, asCount(mergedRemote.freezes ?? localUser.freezes ?? 1)),
+        streakState: localUser.streakState || mergedRemote.streakState || 'active',
+        lastFullDay: localUser.lastFullDay || mergedRemote.lastFullDay || null,
+        freezeDate: localUser.freezeDate || mergedRemote.freezeDate || null
+      };
+
+      const localManual = matchingPending && pendingBelongsToUser
+        ? matchingPending.manualMissed
+        : localBelongsToUser ? localStorage.getItem('tadarak_manual_missed') : null;
+      const manualValue = localManual !== null && localManual !== undefined
+        ? localManual
+        : (mergedRemote.manualMissed !== undefined && mergedRemote.manualMissed !== null ? String(mergedRemote.manualMissed) : null);
+      if (manualValue === null) localStorage.removeItem('tadarak_manual_missed');
+      else localStorage.setItem('tadarak_manual_missed', String(manualValue));
+
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+      localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
+      firebaseAuthUser = user;
+      closeAuthModal();
+      updateUserStatsUI();
+      ensureTodayLog();
+      reconcileStreakForDateChange(false);
+      renderDailyLogs();
+      calculateQadhaMetrics();
+      renderHeatmap();
+      updateBadges();
+      updateManualOverrideStatus();
+      updateTariqMoodState();
+      fetchLeaderboard();
+      await persistAuthenticatedData();
+
+      if (matchingPending) {
+        localStorage.removeItem(pendingProfileStorageKey);
+        localStorage.removeItem(emailLinkStorageKey);
+      }
+    }
+
+    function syncAuthenticatedUser(user) {
+      if (!user) return Promise.resolve();
+      if (authProfileSyncs.has(user.uid)) return authProfileSyncs.get(user.uid);
+      const task = performAuthenticatedUserSync(user).finally(() => authProfileSyncs.delete(user.uid));
+      authProfileSyncs.set(user.uid, task);
+      return task;
+    }
+
+    async function persistAuthenticatedData() {
+      if (!firebaseAuthUser || !currentUser || currentUser.uid !== firebaseAuthUser.uid) return;
+      const rawManual = localStorage.getItem('tadarak_manual_missed');
+      const manualMissed = rawManual === null ? null : Number(rawManual);
+      const privateProfile = {
+        uid: firebaseAuthUser.uid,
+        email: firebaseAuthUser.email,
+        fullName: String(currentUser.fullName || 'Tadarak member').slice(0, 80),
+        dob: currentUser.dob || '2000-01-01',
+        xp: Number(currentUser.xp) || 0,
+        streak: Number(currentUser.streak) || 0,
+        freezes: Number(currentUser.freezes) || 0,
+        lastFullDay: currentUser.lastFullDay || null,
+        streakState: currentUser.streakState || 'active',
+        freezeDate: currentUser.freezeDate || null,
+        logs: dailyLogs,
+        manualMissed,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      try {
+        await db.collection('users').doc(firebaseAuthUser.uid).set(privateProfile, { merge: true });
+        await db.collection('leaderboard_public').doc(firebaseAuthUser.uid).set({
+          fullName: privateProfile.fullName,
+          xp: privateProfile.xp,
+          streak: privateProfile.streak,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (error) {
+        console.warn('Online sync unavailable; all progress remains saved on this device.', error);
+        setLeaderboardSyncStatus(false, 'local data preserved');
+      }
+    }
+
+    function initializeFirebaseAuth() {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(error => {
+        console.warn('Could not set local Firebase Auth persistence.', error);
+      });
+      auth.onAuthStateChanged(user => {
+        firebaseAuthUser = user;
+        if (user) {
+          syncAuthenticatedUser(user).catch(error => {
+            console.warn('Account data could not be restored; local data remains available.', error);
+          });
+        } else {
+          updateUserStatsUI();
+          fetchLeaderboard();
+        }
+      });
+
+      if (auth.isSignInWithEmailLink(window.location.href)) {
+        const email = localStorage.getItem(emailLinkStorageKey);
+        if (email) {
+          auth.signInWithEmailLink(email, window.location.href).then(credential => {
+            return syncAuthenticatedUser(credential.user);
+          }).then(() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            localStorage.removeItem(emailLinkStorageKey);
+            showMascotSpeech(`Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+          }).catch(error => {
+            console.warn('Email link could not be completed automatically.', error);
+            openAuthModal();
+            document.getElementById('auth-email').value = email;
+            setAuthStatus('Enter the same email address used to request this link, then select Verify & continue.', true);
+          });
+        } else {
+          openAuthModal();
+          setAuthStatus('Enter the email address that received this link, plus your profile details, to finish signing in.');
+          const button = document.querySelector('#profile-form button[type="submit"]');
+          if (button) button.textContent = 'Verify & continue';
+        }
+      }
+    }
+
+    async function logout() {
+      try {
+        await auth.signOut();
+        localStorage.removeItem('tadarak_session');
+        location.reload();
+      } catch (error) {
+        console.error('Could not sign out of Firebase Auth.', error);
+        showMascotSpeech('Sign-out could not be completed. Your saved progress has not been removed.');
+      }
+    }
+
     // --- DAILY QADHA LOGGING ---
     function ensureTodayLog() {
       todayStr = localDateString();
@@ -1356,21 +1669,9 @@ function logout() {
       localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
       localStorage.setItem('tadarak_logs', JSON.stringify(dailyLogs));
       updateUserStatsUI();
-      
-      if (currentUser.email !== "guest@tadarak.org") {
-        db.collection('users').doc(currentUser.email).set({
-          fullName: currentUser.fullName || 'Tadarak member',
-          email: currentUser.email,
-          xp: currentUser.xp,
-          streak: currentUser.streak,
-          lastFullDay: currentUser.lastFullDay ?? null,
-          streakState: currentUser.streakState ?? 'active',
-          freezes: currentUser.freezes,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(error => {
-          console.warn('Online leaderboard sync unavailable; local progress is preserved.', error);
-        });
-      }
+      persistAuthenticatedData().catch(error => {
+        console.warn('Online sync unavailable; local progress remains saved.', error);
+      });
     }
 
     // --- CALCULATOR ENGINE ---
@@ -1383,6 +1684,7 @@ function logout() {
         return;
       }
       localStorage.setItem('tadarak_manual_missed', String(Number(input.value)));
+      saveData();
       updateManualOverrideStatus();
       calculateQadhaMetrics();
       showMascotSpeech("Got it! Your personal estimate is now driving the remaining count and completion projection.");
@@ -1390,6 +1692,7 @@ function logout() {
 
     function clearManualMissedOverride() {
       localStorage.removeItem('tadarak_manual_missed');
+      saveData();
       document.getElementById('manual-missed-input').value = '';
       updateManualOverrideStatus();
       calculateQadhaMetrics();
@@ -1543,12 +1846,12 @@ function logout() {
       }
     }
 
-    // --- SHARED LEADERBOARD ---
+    // --- PRIVACY-SAFE SHARED LEADERBOARD ---
     function setLeaderboardSyncStatus(connected, detail = '') {
       const status = document.getElementById('leaderboard-sync-status');
       if (!status) return;
       if (connected) {
-        const count = liveFirestoreUsers.filter(user => user.email !== 'guest@tadarak.org').length;
+        const count = liveFirestoreUsers.length;
         status.textContent = `Community examples · sample streaks advance daily · ${count} live member${count === 1 ? '' : 's'}${detail ? ` · ${detail}` : ''}`;
       } else {
         status.textContent = `Community examples · sample streaks advance daily · cross-device sync unavailable${detail ? ` · ${detail}` : ''}`;
@@ -1558,20 +1861,19 @@ function logout() {
     function startLeaderboardSync() {
       if (leaderboardUnsubscribe) return;
       try {
-        leaderboardUnsubscribe = db.collection('users').onSnapshot(snapshot => {
+        // Public collection contains display name, XP, and streak only—never email or private logs.
+        leaderboardUnsubscribe = db.collection('leaderboard_public').onSnapshot(snapshot => {
           liveFirestoreUsers = snapshot.docs.map(doc => {
             const data = doc.data() || {};
-            const email = String(data.email || doc.id || '').trim();
-            if (!email || email === 'guest@tadarak.org') return null;
             const xp = Number(data.xp);
             const streak = Number(data.streak);
             return {
-              fullName: String(data.fullName || data.name || 'Tadarak member'),
-              email,
-              xp: Number.isFinite(xp) ? xp : 0,
-              streak: Number.isFinite(streak) ? streak : 0
+              uid: doc.id,
+              fullName: String(data.fullName || 'Tadarak member').slice(0, 80),
+              xp: Number.isFinite(xp) ? Math.max(0, xp) : 0,
+              streak: Number.isFinite(streak) ? Math.max(0, streak) : 0
             };
-          }).filter(Boolean);
+          }).filter(user => !!user.uid);
           setLeaderboardSyncStatus(true);
           fetchLeaderboard();
         }, error => {
@@ -1594,14 +1896,17 @@ function logout() {
     function fetchLeaderboard() {
       const users = getFictionalCommunityMembers();
       liveFirestoreUsers.forEach(remoteUser => {
-        const existingIdx = users.findIndex(user => String(user.email).toLowerCase() === remoteUser.email.toLowerCase());
-        if (existingIdx >= 0) users[existingIdx] = { ...users[existingIdx], ...remoteUser };
-        else users.push(remoteUser);
+        const existingIdx = users.findIndex(user => user.uid && user.uid === remoteUser.uid);
+        const safeMember = { ...remoteUser, email: `member-${remoteUser.uid}@public.tadarak` };
+        if (existingIdx >= 0) users[existingIdx] = { ...users[existingIdx], ...safeMember };
+        else users.push(safeMember);
       });
 
       const currentEmail = currentUser.email || 'guest@tadarak.org';
-      let currentIdx = users.findIndex(user => String(user.email).toLowerCase() === currentEmail.toLowerCase());
-      const currentRemote = liveFirestoreUsers.find(user => user.email.toLowerCase() === currentEmail.toLowerCase());
+      let currentIdx = users.findIndex(user =>
+        (currentUser.uid && user.uid === currentUser.uid) || String(user.email || '').toLowerCase() === currentEmail.toLowerCase()
+      );
+      const currentRemote = currentUser.uid ? liveFirestoreUsers.find(user => user.uid === currentUser.uid) : null;
       const currentForBoard = { ...(currentIdx >= 0 ? users[currentIdx] : {}), ...currentUser };
       if (currentRemote) {
         currentForBoard.xp = Math.max(Number(currentRemote.xp) || 0, Number(currentUser.xp) || 0);
@@ -1615,7 +1920,7 @@ function logout() {
       tbody.innerHTML = '';
 
       users.forEach((user, idx) => {
-        const isUser = String(user.email).toLowerCase() === currentEmail.toLowerCase();
+        const isUser = (currentUser.uid && user.uid === currentUser.uid) || String(user.email || '').toLowerCase() === currentEmail.toLowerCase();
         if (isUser) document.getElementById('user-rank').innerText = `#${idx + 1}`;
         const tr = document.createElement('tr');
         tr.className = isUser ? 'bg-emerald-500/10 font-bold border-l-4 border-emerald-500' : 'hover:bg-gray-800/30';
@@ -1726,6 +2031,7 @@ function logout() {
       todayStr = localDateString();
       document.getElementById('cert-date').value = todayStr;
       initApp();
+      initializeFirebaseAuth();
     };
   </script>
 </body>

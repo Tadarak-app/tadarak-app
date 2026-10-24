@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email is string;
+    }
+    function owner(uid) { return verified() && request.auth.uid == uid; }
+    function validProfile(uid) {
+      return request.resource.data.keys().hasOnly(['uid','email','fullName','dob','xp','streak','freezes','lastFullDay','streakState','freezeDate','logs','manualMissed','updatedAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.fullName is string && request.resource.data.fullName.size() <= 80
+        && request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 100000000
+        && request.resource.data.streak is int && request.resource.data.streak >= 0 && request.resource.data.streak <= 36500
+        && request.resource.data.logs is list && request.resource.data.logs.size() <= 5000
+        && request.resource.data.updatedAt is timestamp;
+    }
+    function validBoard() {
+      return request.resource.data.keys().hasOnly(['fullName','xp','streak','updatedAt'])
+        && request.resource.data.keys().hasAll(['fullName','xp','streak','updatedAt'])
+        && request.resource.data.fullName is string && request.resource.data.fullName.size() <= 80
+        && request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 100000000
+        && request.resource.data.streak is int && request.resource.data.streak >= 0 && request.resource.data.streak <= 36500
+        && request.resource.data.updatedAt is timestamp;
+    }
+    match /users/{uid} {
+      allow get: if owner(uid) || (verified() && resource.data.keys().hasAny(['email']) && resource.data.email == request.auth.token.email);
+      allow list: if verified() && resource.data.keys().hasAny(['email']) && resource.data.email == request.auth.token.email;
+      allow create, update: if owner(uid) && validProfile(uid);
+      allow delete: if false;
+    }
+    match /leaderboard_public/{uid} {
+      allow get, list: if true;
+      allow create, update: if owner(uid) && validBoard();
+      allow delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
