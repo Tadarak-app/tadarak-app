@@ -709,7 +709,7 @@
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs opacity-70 text-center">Sign in with a one-time email link or Google. Firebase keeps you signed in on this device until you choose to sign out. Your private progress syncs to your account; only your display name, XP, and streak appear in the Hall of Fame.</p>
+      <p class="text-xs opacity-70 text-center">Sign in with a one-time email link or Google. Firebase keeps you signed in on this device until you choose to sign out. Google fills your name and email; if your date of birth is not already saved, Tadarak will ask for it after sign-in.</p>
       <p id="auth-status" role="status" aria-live="polite" class="text-xs text-center text-emerald-300 min-h-4"></p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
@@ -723,7 +723,7 @@
           Send secure sign-in link
         </button>
       </form>
-      <div class="flex items-center gap-3 text-xs opacity-50" aria-hidden="true"><span class="h-px flex-1 bg-gray-600"></span><span>or</span><span class="h-px flex-1 bg-gray-600"></span></div>
+      <div id="auth-provider-divider" class="flex items-center gap-3 text-xs opacity-50" aria-hidden="true"><span class="h-px flex-1 bg-gray-600"></span><span>or</span><span class="h-px flex-1 bg-gray-600"></span></div>
       <button id="google-sign-in-button" type="button" onclick="handleGoogleSignIn()" class="w-full bg-white hover:bg-gray-100 text-gray-900 font-semibold py-2.5 rounded-lg transition text-sm flex items-center justify-center gap-2">
         <i class="fa-brands fa-google" aria-hidden="true"></i> Continue with Google
       </button>
@@ -1152,6 +1152,7 @@
         authSec.innerHTML = `
           <div class="flex items-center space-x-2">
             <span class="text-xs text-gray-300 font-semibold">${escapeLeaderboardText(currentUser.fullName || 'Tadarak member')}</span>
+            ${currentUser.dob ? '' : '<button onclick="openAuthModal()" class="text-xs text-amber-300 hover:underline">Add date of birth</button>'}
             ${hasGoogleProvider ? '' : '<button onclick="openAuthModal()" class="text-xs text-emerald-400 hover:underline">Link Google</button>'}
             <button onclick="logout()" class="text-xs text-red-400 hover:underline">Sign Out</button>
           </div>
@@ -1169,15 +1170,34 @@
       const name = document.getElementById('auth-name');
       const email = document.getElementById('auth-email');
       const dob = document.getElementById('auth-dob');
-      const canPrefillCurrent = currentUser && currentUser.email !== 'guest@tadarak.org';
-      name.value = (pending && pending.fullName) || (canPrefillCurrent ? currentUser.fullName : '') || '';
-      email.value = (pending && pending.email) || (canPrefillCurrent ? currentUser.email : '') || '';
-      dob.value = (pending && pending.dob) || (canPrefillCurrent ? currentUser.dob : '') || '';
+      const submitButton = document.querySelector('#profile-form button[type="submit"]');
       const googleButton = document.getElementById('google-sign-in-button');
+      const divider = document.getElementById('auth-provider-divider');
+      const canPrefillCurrent = currentUser && currentUser.email !== 'guest@tadarak.org';
+      const isCurrentAccount = !!(firebaseAuthUser && currentUser && currentUser.uid === firebaseAuthUser.uid);
+      const googleNeedsDob = isCurrentAccount && firebaseAuthUser.providerData.some(provider => provider.providerId === 'google.com') && !currentUser.dob;
+      name.value = googleNeedsDob
+        ? (currentUser.fullName || firebaseAuthUser.displayName || '')
+        : ((pending && pending.fullName) || (canPrefillCurrent ? currentUser.fullName : '') || '');
+      email.value = googleNeedsDob
+        ? (firebaseAuthUser.email || currentUser.email || '')
+        : ((pending && pending.email) || (canPrefillCurrent ? currentUser.email : '') || '');
+      dob.value = googleNeedsDob ? '' : ((pending && pending.dob) || (canPrefillCurrent ? currentUser.dob : '') || '');
+      name.readOnly = googleNeedsDob && !!name.value;
+      email.readOnly = googleNeedsDob && !!email.value;
+      if (submitButton) {
+        submitButton.textContent = googleNeedsDob
+          ? 'Save date of birth'
+          : (isCurrentAccount ? 'Save profile' : (auth.isSignInWithEmailLink(window.location.href) ? 'Verify & continue' : 'Send secure sign-in link'));
+      }
+      if (googleButton) googleButton.classList.toggle('hidden', googleNeedsDob);
+      if (divider) divider.classList.toggle('hidden', googleNeedsDob);
       if (googleButton) googleButton.innerHTML = `<i class="fa-brands fa-google" aria-hidden="true"></i> ${auth.currentUser ? 'Link Google to this account' : 'Continue with Google'}`;
       setAuthStatus(auth.isSignInWithEmailLink(window.location.href)
         ? 'Confirm the email address that received this sign-in link, then continue.'
-        : 'Use the email link or Google. For Google sign-in, enter your date of birth above first.');
+        : (googleNeedsDob
+          ? 'Google sign-in is complete. Enter your date of birth to calculate your personal Qadha estimate.'
+          : 'Use the email link or Google. Google fills your name and email; if a date of birth is not saved, we will ask after sign-in.'));
       document.getElementById('auth-modal').classList.remove('hidden');
       document.getElementById('auth-modal').classList.add('flex');
     }
@@ -1288,7 +1308,9 @@
           if (dob) currentUser.dob = dob;
           localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
           await persistAuthenticatedData();
-          await sendProfileToFormspree(form);
+          if (!firebaseAuthUser.providerData.some(provider => provider.providerId === 'google.com')) {
+            await sendProfileToFormspree(form);
+          }
           localStorage.removeItem(pendingProfileStorageKey);
           closeAuthModal();
           updateUserStatsUI();
@@ -1326,16 +1348,6 @@
     }
 
     async function handleGoogleSignIn() {
-      const nameInput = document.getElementById('auth-name');
-      const emailInput = document.getElementById('auth-email');
-      const dobInput = document.getElementById('auth-dob');
-      const dob = dobInput.value || (currentUser && currentUser.email !== 'guest@tadarak.org' ? currentUser.dob : '');
-      if (!dob) {
-        setAuthStatus('Enter your date of birth above before continuing with Google.', true);
-        dobInput.focus();
-        return;
-      }
-
       const button = document.getElementById('google-sign-in-button');
       if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Connecting…'; }
       setAuthStatus('');
@@ -1360,19 +1372,23 @@
         await syncAuthenticatedUser(user);
         firebaseAuthUser = user;
         currentUser.uid = user.uid;
-        currentUser.email = user.email;
-        currentUser.fullName = String(nameInput.value.trim() || user.displayName || currentUser.fullName || 'Tadarak member').slice(0, 80);
-        currentUser.dob = dob;
+        currentUser.email = user.email || currentUser.email;
+        currentUser.fullName = String(user.displayName || currentUser.fullName || 'Tadarak member').slice(0, 80);
         localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
         await persistAuthenticatedData();
         localStorage.removeItem(pendingProfileStorageKey);
-        emailInput.value = user.email || '';
-        closeAuthModal();
         authStateReady = true;
         updateUserStatsUI();
         calculateQadhaMetrics();
         fetchLeaderboard();
-        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+        if (!currentUser.dob) {
+          openAuthModal();
+          setAuthStatus('Google sign-in is complete. Enter your date of birth to calculate your personal Qadha estimate.');
+          showMascotSpeech('Google is connected. Add your date of birth to finish setting up your estimate.');
+        } else {
+          closeAuthModal();
+          showMascotSpeech(`Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+        }
       } catch (error) {
         console.error('Google sign-in failed.', error);
         const messages = {
@@ -1381,7 +1397,8 @@
           'auth/popup-closed-by-user': 'Google sign-in was cancelled. You can try again whenever you are ready.',
           'auth/popup-blocked': 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.',
           'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
-          'auth/unauthorized-domain': 'This website domain is not authorized for Firebase Authentication yet.'
+          'auth/unauthorized-domain': 'This website domain is not authorized for Firebase Authentication yet.',
+          'auth/invalid-api-key': 'Firebase rejected the sign-in API key or its allowed website domains. Check the Firebase web API key restrictions.'
         };
         setAuthStatus(messages[error.code] || 'Google sign-in could not be completed. Your saved progress is unchanged; please try again.', true);
       } finally {
@@ -1403,6 +1420,7 @@
       const pendingBelongsToUser = pendingLocal && (sameEmail(pendingLocal.email, email) || pendingLocal.email === 'guest@tadarak.org');
       const localBelongsToUser = !!matchingSession || !!guestSession || !!(matchingPending && pendingBelongsToUser);
       const localUser = (matchingPending && pendingBelongsToUser ? pendingLocal : null) || matchingSession || guestSession || {};
+      const localDob = guestSession && localUser.dob === '2000-01-01' ? null : localUser.dob;
       let remoteUser = {};
       let legacyUser = {};
 
@@ -1438,7 +1456,7 @@
         uid: user.uid,
         fullName: String(fallbackName).slice(0, 80),
         email: user.email,
-        dob: (matchingPending && matchingPending.dob) || localUser.dob || mergedRemote.dob || '2000-01-01',
+        dob: (matchingPending && matchingPending.dob) || localDob || mergedRemote.dob || null,
         xp: Math.max(asCount(mergedRemote.xp), asCount(localUser.xp)),
         streak: Math.max(asCount(mergedRemote.streak), asCount(localUser.streak)),
         freezes: Math.max(0, asCount(mergedRemote.freezes ?? localUser.freezes ?? 1)),
@@ -1508,7 +1526,7 @@
         uid: firebaseAuthUser.uid,
         email: firebaseAuthUser.email,
         fullName: String(currentUser.fullName || 'Tadarak member').slice(0, 80),
-        dob: currentUser.dob || '2000-01-01',
+        dob: currentUser.dob || null,
         xp: Number(currentUser.xp) || 0,
         streak: Number(currentUser.streak) || 0,
         freezes: Number(currentUser.freezes) || 0,
@@ -1845,14 +1863,15 @@
     }
 
     function calculateQadhaMetrics() {
-      const dobStr = currentUser.dob || "2000-01-01";
-      const dob = new Date(dobStr);
+      const dobStr = currentUser && currentUser.dob ? currentUser.dob : '';
+      const dob = dobStr ? new Date(dobStr) : null;
+      const hasValidDob = !!dob && !Number.isNaN(dob.getTime());
       const pubertyAge = 12;
-      const pubertyDate = new Date(dob.getFullYear() + pubertyAge, dob.getMonth(), dob.getDate());
+      const pubertyDate = hasValidDob ? new Date(dob.getFullYear() + pubertyAge, dob.getMonth(), dob.getDate()) : null;
       const now = new Date();
 
-      let totalDaysObligated = Math.max(0, Math.floor((now - pubertyDate) / (1000 * 60 * 60 * 24)));
-      let totalObligation = totalDaysObligated * 6; // 6 prayers per day (5 Fard + Witr)
+      const totalDaysObligated = hasValidDob ? Math.max(0, Math.floor((now - pubertyDate) / (1000 * 60 * 60 * 24))) : null;
+      const totalObligation = hasValidDob ? totalDaysObligated * 6 : null; // 6 prayers per day (5 Fard + Witr)
 
       let totalCompleted = 0;
       dailyLogs.forEach(l => {
@@ -1861,24 +1880,29 @@
         });
       });
 
-      const engineRemaining = Math.max(0, totalObligation - totalCompleted);
       const manualOverride = localStorage.getItem('tadarak_manual_missed');
       const hasManualTotal = manualOverride !== null && Number.isSafeInteger(Number(manualOverride)) && Number(manualOverride) >= 0;
+      const hasEstimate = hasManualTotal || hasValidDob;
       const displayTotalObligation = hasManualTotal ? Number(manualOverride) : totalObligation;
-      const remaining = Math.max(0, displayTotalObligation - totalCompleted);
+      const remaining = hasEstimate ? Math.max(0, displayTotalObligation - totalCompleted) : null;
 
       const paceVal = parseInt(document.getElementById('pace-selector').value) || 6;
-      let daysToComplete = Math.ceil(remaining / paceVal);
       let completionDate = new Date();
-      completionDate.setDate(completionDate.getDate() + daysToComplete);
+      if (remaining !== null) completionDate.setDate(completionDate.getDate() + Math.ceil(remaining / paceVal));
 
-      document.getElementById('calc-total').innerText = displayTotalObligation.toLocaleString();
-      document.getElementById('calc-total-note').innerText = hasManualTotal ? 'Personal total (logged + remaining)' : 'Prayers (Fard + Witr)';
+      document.getElementById('calc-total').innerText = hasEstimate ? displayTotalObligation.toLocaleString() : '—';
+      document.getElementById('calc-total-note').innerText = hasManualTotal
+        ? 'Personal total (logged + remaining)'
+        : (hasValidDob ? 'Prayers (Fard + Witr)' : 'Add your date of birth to calculate');
       document.getElementById('calc-completed').innerText = totalCompleted.toLocaleString();
-      document.getElementById('calc-remaining').innerText = remaining.toLocaleString();
-      document.getElementById('calc-completion-date').innerText = remaining > 0 ? localDateString(completionDate) : "Completed!";
+      document.getElementById('calc-remaining').innerText = hasEstimate ? remaining.toLocaleString() : '—';
+      document.getElementById('calc-completion-date').innerText = !hasEstimate
+        ? 'Add DOB to calculate'
+        : (remaining > 0 ? localDateString(completionDate) : 'Completed!');
 
-      let percent = displayTotalObligation > 0 ? Math.min(100, (totalCompleted / displayTotalObligation) * 100).toFixed(1) : (totalCompleted > 0 ? 100 : 0);
+      let percent = hasEstimate
+        ? (displayTotalObligation > 0 ? Math.min(100, (totalCompleted / displayTotalObligation) * 100).toFixed(1) : (totalCompleted > 0 ? 100 : 0))
+        : 0;
       document.getElementById('calc-percent').innerText = `${percent}%`;
       document.getElementById('ring-percent-text').innerText = `${percent}%`;
       document.getElementById('calc-progress-bar').style.width = `${percent}%`;
@@ -1905,7 +1929,12 @@
       }
 
       const remText = document.getElementById('calc-remaining').innerText.replace(/,/g, '');
-      const remaining = parseInt(remText) || 0;
+      if (!/^\d+$/.test(remText)) {
+        document.getElementById('custom-goal-result').innerText = 'Add your date of birth or a personal missed-prayer estimate first.';
+        document.getElementById('apply-pace-btn').classList.add('hidden');
+        return;
+      }
+      const remaining = parseInt(remText, 10);
 
       const reqPace = Math.ceil(remaining / daysLeft);
       document.getElementById('custom-goal-result').innerText = `${reqPace} prayers / day over ${daysLeft} days`;
