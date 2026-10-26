@@ -709,7 +709,7 @@
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs opacity-70 text-center">Sign in with a one-time email link or Google. Firebase keeps you signed in on this device until you choose to sign out. Google fills your name and email; if your date of birth is not already saved, Tadarak will ask for it after sign-in.</p>
+      <p class="text-xs opacity-70 text-center">Sign in with a one-time email link or Google. Google securely redirects here after sign-in; if you are already signed in, it links Google to that account. Firebase keeps you signed in on this device until you choose to sign out. If your date of birth is not saved, Tadarak will ask for it after sign-in.</p>
       <p id="auth-status" role="status" aria-live="polite" class="text-xs text-center text-emerald-300 min-h-4"></p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
@@ -750,6 +750,7 @@
     auth.languageCode = navigator.language || 'en';
     const emailLinkStorageKey = 'tadarak_email_for_signin';
     const pendingProfileStorageKey = 'tadarak_pending_profile';
+    const googleRedirectStorageKey = 'tadarak_google_redirect_mode';
     let firebaseAuthUser = null;
     let authProfileSyncs = new Map();
     let authStateReady = false;
@@ -1347,10 +1348,64 @@
       }
     }
 
+    function getGoogleAuthErrorMessage(error) {
+      const messages = {
+        'auth/account-exists-with-different-credential': 'This email already has an account. Sign in with its email link, then select Link Google to connect it.',
+        'auth/credential-already-in-use': 'That Google account is already connected to another Tadarak account.',
+        'auth/redirect-cancelled-by-user': 'Google sign-in was cancelled. Your existing account remains signed in.',
+        'auth/no-auth-event': 'Google sign-in did not complete. Your existing account remains signed in; try again.',
+        'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+        'auth/unauthorized-domain': 'This website domain is not authorized for Firebase Authentication yet.',
+        'auth/invalid-api-key': 'Firebase rejected the sign-in API key or its allowed website domains.',
+        'auth/network-request-failed': 'The connection to Google failed. Check your internet connection and try again.'
+      };
+      return messages[error.code] || `Google sign-in could not be completed${error.code ? ` (${error.code})` : ''}. Your saved progress is unchanged; please try again.`;
+    }
+
+    async function completeGoogleSignIn(user, redirectMode) {
+      if (!user) return;
+      const activeSync = authProfileSyncs.get(user.uid);
+      if (activeSync) await activeSync;
+      else if (!currentUser || currentUser.uid !== user.uid) await syncAuthenticatedUser(user);
+
+      firebaseAuthUser = user;
+      currentUser = currentUser || {};
+      currentUser.uid = user.uid;
+      currentUser.email = user.email || currentUser.email || '';
+      const preferredName = redirectMode === 'link'
+        ? (currentUser.fullName || user.displayName)
+        : (user.displayName || currentUser.fullName);
+      currentUser.fullName = String(preferredName || 'Tadarak member').slice(0, 80);
+      localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+      await persistAuthenticatedData();
+      localStorage.removeItem(pendingProfileStorageKey);
+      localStorage.removeItem(googleRedirectStorageKey);
+      if (!authStateReady) {
+        authStateReady = true;
+        if (resolveAuthInitialState) {
+          resolveAuthInitialState();
+          resolveAuthInitialState = null;
+        }
+      }
+      updateUserStatsUI();
+      calculateQadhaMetrics();
+      fetchLeaderboard();
+      if (!currentUser.dob) {
+        openAuthModal();
+        setAuthStatus('Google sign-in is complete. Enter your date of birth to calculate your personal Qadha estimate.');
+        showMascotSpeech('Google is connected. Add your date of birth to finish setting up your estimate.');
+      } else {
+        closeAuthModal();
+        showMascotSpeech(redirectMode === 'link'
+          ? 'Google is now linked to your existing Tadarak account.'
+          : `Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+      }
+    }
+
     async function handleGoogleSignIn() {
       const button = document.getElementById('google-sign-in-button');
-      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Connecting…'; }
-      setAuthStatus('');
+      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Redirecting…'; }
+      setAuthStatus('Google will open securely and return you to Tadarak.');
       try {
         if (authPersistenceReady && !(await authPersistenceReady)) {
           setAuthStatus('This browser could not enable persistent sign-in. Allow site storage and try again.', true);
@@ -1359,52 +1414,44 @@
         await authInitialStateReady;
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        let user;
-        const existingGoogleProvider = auth.currentUser && auth.currentUser.providerData.some(item => item.providerId === 'google.com');
-        if (existingGoogleProvider) {
-          user = auth.currentUser;
-        } else if (auth.currentUser) {
-          user = (await auth.currentUser.linkWithPopup(provider)).user;
+        const user = auth.currentUser;
+        const alreadyLinked = user && user.providerData.some(item => item.providerId === 'google.com');
+        if (alreadyLinked) {
+          await completeGoogleSignIn(user, 'link');
         } else {
-          user = (await auth.signInWithPopup(provider)).user;
-        }
-
-        await syncAuthenticatedUser(user);
-        firebaseAuthUser = user;
-        currentUser.uid = user.uid;
-        currentUser.email = user.email || currentUser.email;
-        currentUser.fullName = String(user.displayName || currentUser.fullName || 'Tadarak member').slice(0, 80);
-        localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
-        await persistAuthenticatedData();
-        localStorage.removeItem(pendingProfileStorageKey);
-        authStateReady = true;
-        updateUserStatsUI();
-        calculateQadhaMetrics();
-        fetchLeaderboard();
-        if (!currentUser.dob) {
-          openAuthModal();
-          setAuthStatus('Google sign-in is complete. Enter your date of birth to calculate your personal Qadha estimate.');
-          showMascotSpeech('Google is connected. Add your date of birth to finish setting up your estimate.');
-        } else {
-          closeAuthModal();
-          showMascotSpeech(`Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+          const redirectMode = user ? 'link' : 'signin';
+          localStorage.setItem(googleRedirectStorageKey, redirectMode);
+          if (user) await user.linkWithRedirect(provider);
+          else await auth.signInWithRedirect(provider);
         }
       } catch (error) {
-        console.error('Google sign-in failed.', error);
-        const messages = {
-          'auth/account-exists-with-different-credential': 'This email already has an account. Sign in with its email link first, then choose Link Google to connect it.',
-          'auth/credential-already-in-use': 'That Google account is already connected to another Tadarak account.',
-          'auth/popup-closed-by-user': 'Google sign-in was cancelled. You can try again whenever you are ready.',
-          'auth/popup-blocked': 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.',
-          'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
-          'auth/unauthorized-domain': 'This website domain is not authorized for Firebase Authentication yet.',
-          'auth/invalid-api-key': 'Firebase rejected the sign-in API key or its allowed website domains. Check the Firebase web API key restrictions.'
-        };
-        setAuthStatus(messages[error.code] || 'Google sign-in could not be completed. Your saved progress is unchanged; please try again.', true);
+        localStorage.removeItem(googleRedirectStorageKey);
+        console.error('Google sign-in redirect failed.', error);
+        setAuthStatus(getGoogleAuthErrorMessage(error), true);
       } finally {
         if (button) {
           button.disabled = false;
           button.innerHTML = `<i class="fa-brands fa-google" aria-hidden="true"></i> ${auth.currentUser ? 'Link Google to this account' : 'Continue with Google'}`;
+        }
+      }
+    }
+
+    async function handleGoogleRedirectResult() {
+      const redirectMode = localStorage.getItem(googleRedirectStorageKey);
+      try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+          await completeGoogleSignIn(result.user, redirectMode || 'signin');
+        } else if (redirectMode) {
+          localStorage.removeItem(googleRedirectStorageKey);
+        }
+      } catch (error) {
+        localStorage.removeItem(googleRedirectStorageKey);
+        console.error('Google redirect result could not be completed.', error);
+        if (redirectMode) {
+          await authInitialStateReady;
+          openAuthModal();
+          setAuthStatus(getGoogleAuthErrorMessage(error), true);
         }
       }
     }
@@ -1581,6 +1628,7 @@
           fetchLeaderboard();
         }
       });
+      handleGoogleRedirectResult();
 
       if (auth.isSignInWithEmailLink(window.location.href)) {
         const email = localStorage.getItem(emailLinkStorageKey);
