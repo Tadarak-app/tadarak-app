@@ -337,7 +337,11 @@
         </div>
 
         <!-- NEW FEATURE: CUSTOM GOAL TARGET CALCULATOR -->
-        <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-800 space-y-3">
+        <div class="space-y-3">
+          <button id="custom-deadline-toggle" type="button" aria-expanded="false" aria-controls="custom-deadline-panel" onclick="toggleOptionalPanel('custom-deadline-panel', 'custom-deadline-toggle', 'Use the Custom Deadline Target Calculator', 'Hide the Custom Deadline Target Calculator')" class="w-full text-left bg-gray-900/80 hover:bg-gray-800 p-3 rounded-xl border border-gray-800 text-sm font-semibold text-amber-300 transition">
+            Use the Custom Deadline Target Calculator
+          </button>
+          <div id="custom-deadline-panel" class="bg-gray-900/80 p-4 rounded-xl border border-gray-800 space-y-3" hidden>
           <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
             <i class="fa-solid fa-bullseye"></i> Custom Deadline Target Calculator
           </h3>
@@ -356,10 +360,15 @@
               </button>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- OPTIONAL PERSONAL ESTIMATE; the lifetime calculator above remains unchanged -->
-        <div class="bg-emerald-950/30 p-4 rounded-xl border border-emerald-500/20 space-y-3">
+        <div class="space-y-3">
+          <button id="personal-estimate-toggle" type="button" aria-expanded="false" aria-controls="personal-estimate-panel" onclick="toggleOptionalPanel('personal-estimate-panel', 'personal-estimate-toggle', 'Use Your Own Missed-Prayer Estimate', 'Hide Your Personal Missed-Prayer Estimate')" class="w-full text-left bg-emerald-950/50 hover:bg-emerald-950/70 p-3 rounded-xl border border-emerald-500/30 text-sm font-semibold text-emerald-300 transition">
+            Use Your Own Missed-Prayer Estimate
+          </button>
+          <div id="personal-estimate-panel" class="bg-emerald-950/30 p-4 rounded-xl border border-emerald-500/20 space-y-3" hidden>
           <div>
             <h3 class="text-sm font-bold text-emerald-300">Your Personal Missed-Prayer Estimate</h3>
             <p class="text-[11px] opacity-75 mt-1">Use this optional override if your own estimate differs. Enter your total missed prayer units; completed logs are subtracted to show what's left.</p>
@@ -372,6 +381,7 @@
           </div>
           <p id="manual-override-status" aria-live="polite" class="text-[11px] text-emerald-300"></p>
           <p class="text-[11px] leading-relaxed opacity-70">How the engine works: "The calculation engine counts 6 prayers daily (including Witr separately), where each prayer slot equals 1 unit (total 6 units per day, rather than breaking them down by traditional Rak'ah counts like 2 for Fajr, 4 for Dhuhr, etc.)."</p>
+          </div>
         </div>
         <!-- ANIMATED CIRCULAR PROGRESS RING & OVERALL BAR -->
         <div class="flex flex-col md:flex-row items-center gap-6 pt-2">
@@ -455,7 +465,7 @@
     <section id="content-leaderboard" role="tabpanel" aria-labelledby="tab-leaderboard" class="hidden space-y-6">
       <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h2 class="text-xl font-bold">Weekly Hall of Fame</h2>
-        <span id="leaderboard-sync-status" role="status" aria-live="polite" class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Community examples · sample streaks advance daily · syncing live members…</span>
+        <span id="leaderboard-sync-status" role="status" aria-live="polite" class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>Exempla communitatis ficta · series fictae cotidie progrediuntur · membra vera nunc synchronizantur…</span>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <div class="responsive-table"><table class="w-full text-left text-sm">
@@ -699,7 +709,7 @@
   <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
     <div class="glass-card bg-gray-900 p-6 rounded-2xl max-w-md w-full space-y-4">
       <h3 class="text-xl font-bold text-white text-center">Sign In / Create Account</h3>
-      <p class="text-xs opacity-70 text-center">Sign in securely with a one-time email link. Your private progress syncs to your account; only your display name, XP, and streak appear in the Hall of Fame.</p>
+      <p class="text-xs opacity-70 text-center">Sign in with a one-time email link or Google. Firebase keeps you signed in on this device until you choose to sign out. Your private progress syncs to your account; only your display name, XP, and streak appear in the Hall of Fame.</p>
       <p id="auth-status" role="status" aria-live="polite" class="text-xs text-center text-emerald-300 min-h-4"></p>
       
       <form id="profile-form" action="https://formspree.io/f/myezjgdl" method="POST" onsubmit="handleAuthSubmit(event)" class="space-y-3">
@@ -713,6 +723,10 @@
           Send secure sign-in link
         </button>
       </form>
+      <div class="flex items-center gap-3 text-xs opacity-50" aria-hidden="true"><span class="h-px flex-1 bg-gray-600"></span><span>or</span><span class="h-px flex-1 bg-gray-600"></span></div>
+      <button id="google-sign-in-button" type="button" onclick="handleGoogleSignIn()" class="w-full bg-white hover:bg-gray-100 text-gray-900 font-semibold py-2.5 rounded-lg transition text-sm flex items-center justify-center gap-2">
+        <i class="fa-brands fa-google" aria-hidden="true"></i> Continue with Google
+      </button>
       <button onclick="closeAuthModal()" class="w-full text-xs opacity-70 hover:opacity-100">Cancel</button>
     </div>
   </div>
@@ -738,6 +752,11 @@
     const pendingProfileStorageKey = 'tadarak_pending_profile';
     let firebaseAuthUser = null;
     let authProfileSyncs = new Map();
+    let authStateReady = false;
+    let authPersistenceReady = null;
+    let authInitialStateReady = Promise.resolve();
+    let resolveAuthInitialState = null;
+    const deferredAuthenticatedWrites = new Set();
 
     const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
     
@@ -1060,6 +1079,17 @@
       }
     }
 
+    function toggleOptionalPanel(panelId, buttonId, openLabel, closeLabel) {
+      const panel = document.getElementById(panelId);
+      const button = document.getElementById(buttonId);
+      if (!panel || !button) return;
+
+      const shouldOpen = button.getAttribute('aria-expanded') !== 'true';
+      panel.hidden = !shouldOpen;
+      button.setAttribute('aria-expanded', String(shouldOpen));
+      button.textContent = shouldOpen ? closeLabel : openLabel;
+    }
+
     // --- CORE LOGIC & INITIALIZATION ---
     function initApp() {
       document.querySelectorAll('#tab-navigation [data-tab]').forEach(button => {
@@ -1118,12 +1148,16 @@
 
       const authSec = document.getElementById('auth-section');
       if (firebaseAuthUser && currentUser.uid === firebaseAuthUser.uid) {
+        const hasGoogleProvider = firebaseAuthUser.providerData.some(provider => provider.providerId === 'google.com');
         authSec.innerHTML = `
           <div class="flex items-center space-x-2">
             <span class="text-xs text-gray-300 font-semibold">${escapeLeaderboardText(currentUser.fullName || 'Tadarak member')}</span>
+            ${hasGoogleProvider ? '' : '<button onclick="openAuthModal()" class="text-xs text-emerald-400 hover:underline">Link Google</button>'}
             <button onclick="logout()" class="text-xs text-red-400 hover:underline">Sign Out</button>
           </div>
         `;
+      } else if ((firebaseAuthUser && currentUser.uid !== firebaseAuthUser.uid) || (!authStateReady && currentUser.email && currentUser.email !== 'guest@tadarak.org')) {
+        authSec.innerHTML = '<span class="text-xs text-gray-400" role="status">Restoring your sign-in…</span>';
       } else {
         const label = currentUser.email && currentUser.email !== 'guest@tadarak.org' ? 'Sign In to Sync' : 'Sign In / Create Account';
         authSec.innerHTML = `<button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold px-4 py-1.5 rounded-lg text-sm transition">${label}</button>`;
@@ -1139,9 +1173,11 @@
       name.value = (pending && pending.fullName) || (canPrefillCurrent ? currentUser.fullName : '') || '';
       email.value = (pending && pending.email) || (canPrefillCurrent ? currentUser.email : '') || '';
       dob.value = (pending && pending.dob) || (canPrefillCurrent ? currentUser.dob : '') || '';
+      const googleButton = document.getElementById('google-sign-in-button');
+      if (googleButton) googleButton.innerHTML = `<i class="fa-brands fa-google" aria-hidden="true"></i> ${auth.currentUser ? 'Link Google to this account' : 'Continue with Google'}`;
       setAuthStatus(auth.isSignInWithEmailLink(window.location.href)
         ? 'Confirm the email address that received this sign-in link, then continue.'
-        : 'A one-time secure sign-in link will be sent to your email.');
+        : 'Use the email link or Google. For Google sign-in, enter your date of birth above first.');
       document.getElementById('auth-modal').classList.remove('hidden');
       document.getElementById('auth-modal').classList.add('flex');
     }
@@ -1231,6 +1267,10 @@
       if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Working securely…'; }
 
       try {
+        if (authPersistenceReady && !(await authPersistenceReady)) {
+          setAuthStatus('This browser could not enable persistent sign-in. Allow site storage and try again.', true);
+          return;
+        }
         if (auth.isSignInWithEmailLink(window.location.href)) {
           localStorage.setItem(emailLinkStorageKey, email);
           const credential = await auth.signInWithEmailLink(email, window.location.href);
@@ -1281,6 +1321,73 @@
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = auth.isSignInWithEmailLink(window.location.href) ? 'Verify & continue' : 'Send secure sign-in link';
+        }
+      }
+    }
+
+    async function handleGoogleSignIn() {
+      const nameInput = document.getElementById('auth-name');
+      const emailInput = document.getElementById('auth-email');
+      const dobInput = document.getElementById('auth-dob');
+      const dob = dobInput.value || (currentUser && currentUser.email !== 'guest@tadarak.org' ? currentUser.dob : '');
+      if (!dob) {
+        setAuthStatus('Enter your date of birth above before continuing with Google.', true);
+        dobInput.focus();
+        return;
+      }
+
+      const button = document.getElementById('google-sign-in-button');
+      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Connecting…'; }
+      setAuthStatus('');
+      try {
+        if (authPersistenceReady && !(await authPersistenceReady)) {
+          setAuthStatus('This browser could not enable persistent sign-in. Allow site storage and try again.', true);
+          return;
+        }
+        await authInitialStateReady;
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        let user;
+        const existingGoogleProvider = auth.currentUser && auth.currentUser.providerData.some(item => item.providerId === 'google.com');
+        if (existingGoogleProvider) {
+          user = auth.currentUser;
+        } else if (auth.currentUser) {
+          user = (await auth.currentUser.linkWithPopup(provider)).user;
+        } else {
+          user = (await auth.signInWithPopup(provider)).user;
+        }
+
+        await syncAuthenticatedUser(user);
+        firebaseAuthUser = user;
+        currentUser.uid = user.uid;
+        currentUser.email = user.email;
+        currentUser.fullName = String(nameInput.value.trim() || user.displayName || currentUser.fullName || 'Tadarak member').slice(0, 80);
+        currentUser.dob = dob;
+        localStorage.setItem('tadarak_session', JSON.stringify(currentUser));
+        await persistAuthenticatedData();
+        localStorage.removeItem(pendingProfileStorageKey);
+        emailInput.value = user.email || '';
+        closeAuthModal();
+        authStateReady = true;
+        updateUserStatsUI();
+        calculateQadhaMetrics();
+        fetchLeaderboard();
+        showMascotSpeech(`Welcome, ${currentUser.fullName}! Your account is securely connected.`);
+      } catch (error) {
+        console.error('Google sign-in failed.', error);
+        const messages = {
+          'auth/account-exists-with-different-credential': 'This email already has an account. Sign in with its email link first, then choose Link Google to connect it.',
+          'auth/credential-already-in-use': 'That Google account is already connected to another Tadarak account.',
+          'auth/popup-closed-by-user': 'Google sign-in was cancelled. You can try again whenever you are ready.',
+          'auth/popup-blocked': 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.',
+          'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+          'auth/unauthorized-domain': 'This website domain is not authorized for Firebase Authentication yet.'
+        };
+        setAuthStatus(messages[error.code] || 'Google sign-in could not be completed. Your saved progress is unchanged; please try again.', true);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = `<i class="fa-brands fa-google" aria-hidden="true"></i> ${auth.currentUser ? 'Link Google to this account' : 'Continue with Google'}`;
         }
       }
     }
@@ -1374,13 +1481,27 @@
     function syncAuthenticatedUser(user) {
       if (!user) return Promise.resolve();
       if (authProfileSyncs.has(user.uid)) return authProfileSyncs.get(user.uid);
-      const task = performAuthenticatedUserSync(user).finally(() => authProfileSyncs.delete(user.uid));
+      const task = performAuthenticatedUserSync(user).then(async result => {
+        authProfileSyncs.delete(user.uid);
+        if (deferredAuthenticatedWrites.delete(user.uid)) {
+          await persistAuthenticatedData();
+        }
+        return result;
+      }, error => {
+        authProfileSyncs.delete(user.uid);
+        deferredAuthenticatedWrites.delete(user.uid);
+        throw error;
+      });
       authProfileSyncs.set(user.uid, task);
       return task;
     }
 
     async function persistAuthenticatedData() {
       if (!firebaseAuthUser || !currentUser || currentUser.uid !== firebaseAuthUser.uid) return;
+      if (authProfileSyncs.has(firebaseAuthUser.uid)) {
+        deferredAuthenticatedWrites.add(firebaseAuthUser.uid);
+        return;
+      }
       const rawManual = localStorage.getItem('tadarak_manual_missed');
       const manualMissed = rawManual === null ? null : Number(rawManual);
       const privateProfile = {
@@ -1412,18 +1533,33 @@
       }
     }
 
-    function initializeFirebaseAuth() {
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(error => {
+    async function initializeFirebaseAuth() {
+      authInitialStateReady = new Promise(resolve => { resolveAuthInitialState = resolve; });
+      authPersistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => true).catch(error => {
         console.warn('Could not set local Firebase Auth persistence.', error);
+        return false;
       });
+      await authPersistenceReady;
+      const markInitialAuthStateReady = () => {
+        if (!authStateReady) {
+          authStateReady = true;
+          if (resolveAuthInitialState) {
+            resolveAuthInitialState();
+            resolveAuthInitialState = null;
+          }
+        }
+        updateUserStatsUI();
+      };
       auth.onAuthStateChanged(user => {
         firebaseAuthUser = user;
         if (user) {
           syncAuthenticatedUser(user).catch(error => {
             console.warn('Account data could not be restored; local data remains available.', error);
+          }).finally(() => {
+            markInitialAuthStateReady();
           });
         } else {
-          updateUserStatsUI();
+          markInitialAuthStateReady();
           fetchLeaderboard();
         }
       });
@@ -1850,11 +1986,14 @@
     function setLeaderboardSyncStatus(connected, detail = '') {
       const status = document.getElementById('leaderboard-sync-status');
       if (!status) return;
+      const latinDetail = detail === 'local data preserved' ? 'data localia servata' : detail;
       if (connected) {
         const count = liveFirestoreUsers.length;
-        status.textContent = `Community examples · sample streaks advance daily · ${count} live member${count === 1 ? '' : 's'}${detail ? ` · ${detail}` : ''}`;
+        const memberLabel = count === 1 ? 'membrum verum' : 'membra vera';
+        const latinCount = count === 4 ? 'quattuor' : String(count);
+        status.textContent = `Exempla communitatis ficta · series fictae cotidie progrediuntur · ${latinCount} ${memberLabel}${latinDetail ? ` · ${latinDetail}` : ''}`;
       } else {
-        status.textContent = `Community examples · sample streaks advance daily · cross-device sync unavailable${detail ? ` · ${detail}` : ''}`;
+        status.textContent = `Exempla communitatis ficta · series fictae cotidie progrediuntur · synchronizatio inter machinas non praesto est${latinDetail ? ` · ${latinDetail}` : ''}`;
       }
     }
 
@@ -2027,11 +2166,11 @@
     }
 
     // Run on window initial load
-    window.onload = function() {
+    window.onload = async function() {
       todayStr = localDateString();
       document.getElementById('cert-date').value = todayStr;
       initApp();
-      initializeFirebaseAuth();
+      await initializeFirebaseAuth();
     };
   </script>
 </body>
